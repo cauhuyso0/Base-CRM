@@ -1,0 +1,1009 @@
+// CRM Core Modules Schema
+// Stack: NestJS + Prisma + MySQL
+// All columns and tables use snake_case naming
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// CORE / SHARED MODELS
+// ============================================
+
+/// Bảng quản lý thông tin công ty/doanh nghiệp
+/// Mỗi công ty có thể có nhiều chi nhánh, users, customers, vendors, products
+/// Dùng dual ID: id (Int) cho performance, uuid (String) cho API/security
+model Company {
+  id        Int      @id @default(autoincrement()) @map("id") // Primary key cho performance
+  uuid      String   @unique @default(uuid()) @map("uuid") // UUID cho API/security
+  code      String   @unique @map("code") @db.VarChar(50) // Mã công ty (unique)
+  name      String   @map("name") @db.VarChar(255) // Tên công ty
+  taxCode   String?  @map("tax_code") @db.VarChar(50) // Mã số thuế
+  address   String?  @map("address") @db.Text // Địa chỉ trụ sở chính
+  phone     String?  @map("phone") @db.VarChar(50) // Số điện thoại
+  email     String?  @map("email") @db.VarChar(255) // Email liên hệ
+  website   String?  @map("website") @db.VarChar(255) // Website công ty
+  logo      String?  @map("logo") @db.VarChar(500) // URL logo công ty
+  isActive  Boolean  @default(true) @map("is_active") // Trạng thái hoạt động
+  isDeleted Boolean  @default(false) @map("is_deleted") // Đánh dấu xóa mềm
+  createdAt DateTime @default(now()) @map("created_at") // Ngày tạo
+  updatedAt DateTime @updatedAt @map("updated_at") // Ngày cập nhật
+  createdBy String?  @map("created_by") @db.VarChar(100) // Người tạo
+  updatedBy String?  @map("updated_by") @db.VarChar(100) // Người cập nhật
+
+  // Relations
+  branches      Branch[]
+  users         User[]
+  customers     Customer[]
+  vendors       Vendor[]
+  products      Product[]
+  accounts      Account[]
+  roles         Role[]
+  opportunities Opportunity[]
+  salesOrders   SalesOrder[]
+  campaigns     Campaign[]
+  cases         Case[]
+  documents     Document[]
+
+  @@index([code])
+  @@index([uuid])
+  @@index([isActive])
+  @@index([isDeleted])
+  @@map("companies")
+}
+
+/// Bảng quản lý chi nhánh/phòng ban của công ty
+/// Mỗi công ty có thể có nhiều chi nhánh, mỗi chi nhánh có nhiều users và warehouses
+/// Dùng dual ID: id (Int) cho performance, uuid (String) cho API/security
+model Branch {
+  id        Int      @id @default(autoincrement()) @map("id") // Primary key cho performance
+  uuid      String   @unique @default(uuid()) @map("uuid") // UUID cho API/security
+  companyId Int      @map("company_id") // ID công ty (FK - reference id, not uuid)
+  code      String   @map("code") @db.VarChar(50) // Mã chi nhánh (unique trong công ty)
+  name      String   @map("name") @db.VarChar(255) // Tên chi nhánh
+  address   String?  @map("address") @db.Text // Địa chỉ chi nhánh
+  phone     String?  @map("phone") @db.VarChar(50) // Số điện thoại
+  email     String?  @map("email") @db.VarChar(255) // Email chi nhánh
+  isActive  Boolean  @default(true) @map("is_active") // Trạng thái hoạt động
+  isDeleted Boolean  @default(false) @map("is_deleted") // Đánh dấu xóa mềm
+  createdAt DateTime @default(now()) @map("created_at") // Ngày tạo
+  updatedAt DateTime @updatedAt @map("updated_at") // Ngày cập nhật
+
+  // Relations
+  company    Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  users      User[]
+  warehouses Warehouse[]
+
+  @@unique([companyId, code])
+  @@index([uuid])
+  @@index([companyId])
+  @@index([isDeleted])
+  @@map("branches")
+}
+
+/// Bảng quản lý người dùng trong hệ thống
+/// Mỗi user thuộc về một công ty và có thể thuộc một chi nhánh
+/// User có thể có nhiều roles thông qua bảng UserRole
+/// Dùng dual ID: id (Int) cho performance, uuid (String) cho API/security
+model User {
+  id          Int       @id @default(autoincrement()) @map("id") // Primary key cho performance
+  uuid        String    @unique @default(uuid()) @map("uuid") // UUID cho API/security
+  companyId   Int       @map("company_id") // ID công ty (FK - reference id)
+  branchId    Int?      @map("branch_id") // ID chi nhánh (FK, optional - reference id)
+  username    String    @unique @map("username") @db.VarChar(100) // Tên đăng nhập (unique)
+  email       String    @unique @map("email") @db.VarChar(255) // Email (unique)
+  password    String    @map("password") @db.VarChar(255) // Mật khẩu đã hash
+  firstName   String    @map("first_name") @db.VarChar(100) // Tên
+  lastName    String    @map("last_name") @db.VarChar(100) // Họ
+  phone       String?   @map("phone") @db.VarChar(50) // Số điện thoại
+  avatar      String?   @map("avatar") @db.VarChar(500) // URL avatar
+  isActive    Boolean   @default(true) @map("is_active") // Trạng thái hoạt động
+  isDeleted   Boolean   @default(false) @map("is_deleted") // Đánh dấu xóa mềm
+  lastLoginAt DateTime? @map("last_login_at") // Lần đăng nhập cuối
+  createdAt   DateTime  @default(now()) @map("created_at") // Ngày tạo
+  updatedAt   DateTime  @updatedAt @map("updated_at") // Ngày cập nhật
+
+  // Relations
+  company         Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  branch          Branch?    @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  userRoles       UserRole[]
+  activities      Activity[]
+  tasks           Task[]
+  assignedTickets Ticket[]   @relation("AssignedTo")
+  createdTickets  Ticket[]   @relation("CreatedBy")
+  notes           Note[]
+  documents       Document[]
+
+  @@index([uuid])
+  @@index([companyId])
+  @@index([email])
+  @@index([username])
+  @@index([isDeleted])
+  @@map("users")
+}
+
+/// Bảng quản lý vai trò (roles) trong hệ thống
+/// Mỗi role thuộc về một công ty, có nhiều permissions thông qua RolePermission
+/// Users được gán roles thông qua bảng UserRole
+/// Dùng dual ID: id (Int) cho performance, uuid (String) cho API/security
+model Role {
+  id          Int      @id @default(autoincrement()) @map("id") // Primary key cho performance
+  uuid        String   @unique @default(uuid()) @map("uuid") // UUID cho API/security
+  companyId   Int      @map("company_id") // ID công ty (FK - reference id)
+  code        String   @map("code") @db.VarChar(50) // Mã vai trò (unique trong công ty)
+  name        String   @map("name") @db.VarChar(255) // Tên vai trò (VD: Admin, Sales Manager, Support)
+  description String?  @map("description") @db.Text // Mô tả vai trò
+  isActive    Boolean  @default(true) @map("is_active") // Trạng thái hoạt động
+  isDeleted   Boolean  @default(false) @map("is_deleted") // Đánh dấu xóa mềm
+  createdAt   DateTime @default(now()) @map("created_at") // Ngày tạo
+  updatedAt   DateTime @updatedAt @map("updated_at") // Ngày cập nhật
+
+  // Relations
+  company         Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  userRoles       UserRole[]
+  rolePermissions RolePermission[]
+
+  @@unique([companyId, code])
+  @@index([uuid])
+  @@index([companyId])
+  @@index([isDeleted])
+  @@map("roles")
+}
+
+/// Bảng quản lý quyền (permissions) trong hệ thống
+/// Mỗi permission định nghĩa một hành động cụ thể trên một resource trong một module
+/// VD: customer.create, opportunity.read, case.update
+/// Dùng dual ID: id (Int) cho performance, uuid (String) cho API/security
+model Permission {
+  id          Int      @id @default(autoincrement()) @map("id") // Primary key cho performance
+  uuid        String   @unique @default(uuid()) @map("uuid") // UUID cho API/security
+  code        String   @unique @map("code") @db.VarChar(100) // Mã quyền (VD: customer.create)
+  name        String   @map("name") @db.VarChar(255) // Tên quyền (VD: Tạo khách hàng)
+  module      String   @map("module") @db.VarChar(50) // Module (VD: customer, sales, marketing)
+  resource    String   @map("resource") @db.VarChar(50) // Resource (VD: customer, opportunity, case)
+  action      String   @map("action") @db.VarChar(50) // Hành động: create, read, update, delete, approve, etc.
+  description String?  @map("description") @db.Text // Mô tả quyền
+  isDeleted   Boolean  @default(false) @map("is_deleted") // Đánh dấu xóa mềm
+  createdAt   DateTime @default(now()) @map("created_at") // Ngày tạo
+  updatedAt   DateTime @updatedAt @map("updated_at") // Ngày cập nhật
+
+  // Relations
+  rolePermissions RolePermission[]
+
+  @@index([uuid])
+  @@index([module, resource])
+  @@index([isDeleted])
+  @@map("permissions")
+}
+
+/// Bảng liên kết User và Role (Many-to-Many)
+/// Một user có thể có nhiều roles, một role có thể được gán cho nhiều users
+/// Dùng autoincrement vì chỉ là junction table, không cần merge data
+model UserRole {
+  id        Int      @id @default(autoincrement()) @map("id") // Auto increment ID
+  userId    Int      @map("user_id") // ID user (FK - reference id)
+  roleId    Int      @map("role_id") // ID role (FK - reference id)
+  createdAt DateTime @default(now()) @map("created_at") // Ngày gán role
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, roleId])
+  @@index([userId])
+  @@index([roleId])
+  @@map("user_roles")
+}
+
+/// Bảng liên kết Role và Permission (Many-to-Many)
+/// Một role có nhiều permissions, một permission có thể thuộc nhiều roles
+/// Dùng autoincrement vì chỉ là junction table, không cần merge data
+model RolePermission {
+  id           Int      @id @default(autoincrement()) @map("id") // Auto increment ID
+  roleId       Int      @map("role_id") // ID role (FK - reference id)
+  permissionId Int      @map("permission_id") // ID permission (FK - reference id)
+  createdAt    DateTime @default(now()) @map("created_at") // Ngày gán permission
+
+  // Relations
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId])
+  @@index([roleId])
+  @@index([permissionId])
+  @@map("role_permissions")
+}
+
+// ============================================
+// CRM MODULE 1: CUSTOMER MANAGEMENT
+// ============================================
+
+/// Bảng quản lý khách hàng
+/// Lưu trữ thông tin chi tiết về khách hàng: cá nhân hoặc công ty
+/// Mỗi customer có thể có nhiều contacts, opportunities, sales orders, cases
+/// Dùng dual ID: id (Int) cho performance, uuid (String) cho API/security
+model Customer {
+  id            Int      @id @default(autoincrement()) @map("id") // Primary key cho performance
+  uuid          String   @unique @default(uuid()) @map("uuid") // UUID cho API/security
+  companyId     Int      @map("company_id") // ID công ty (FK - reference id)
+  code          String   @map("code") @db.VarChar(50) // Mã khách hàng (unique trong công ty)
+  name          String   @map("name") @db.VarChar(255) // Tên khách hàng
+  type          String   @default("INDIVIDUAL") @map("type") @db.VarChar(50) // Loại: INDIVIDUAL (cá nhân), COMPANY (công ty)
+  taxCode       String?  @map("tax_code") @db.VarChar(50) // Mã số thuế
+  email         String?  @map("email") @db.VarChar(255) // Email liên hệ
+  phone         String?  @map("phone") @db.VarChar(50) // Số điện thoại cố định
+  mobile        String?  @map("mobile") @db.VarChar(50) // Số điện thoại di động
+  website       String?  @map("website") @db.VarChar(255) // Website
+  address       String?  @map("address") @db.Text // Địa chỉ
+  city          String?  @map("city") @db.VarChar(100) // Thành phố
+  state         String?  @map("state") @db.VarChar(100) // Tỉnh/Thành phố
+  country       String?  @map("country") @db.VarChar(100) // Quốc gia
+  postalCode    String?  @map("postal_code") @db.VarChar(20) // Mã bưu điện
+  industry      String?  @map("industry") @db.VarChar(100) // Ngành nghề
+  employeeCount Int?     @map("employee_count") // Số lượng nhân viên
+  annualRevenue Decimal? @map("annual_revenue") @db.Decimal(18, 2) // Doanh thu hàng năm
+  rating        Int?     @default(0) @map("rating") // Đánh giá: 1-5 sao
+  status        String   @default("ACTIVE") @map("status") @db.VarChar(50) // Trạng thái: ACTIVE, INACTIVE, BLACKLISTED
+  source        String?  @map("source") @db.VarChar(50) // Nguồn: WEBSITE, REFERRAL, ADVERTISING, etc.
+  assignedTo    Int?     @map("assigned_to") // ID user được gán (FK - reference id)
+  tags          String?  @map("tags") @db.Text // Tags dạng JSON array
+  notes         String?  @map("notes") @db.Text // Ghi chú
+  isActive      Boolean  @default(true) @map("is_active")
+  isDeleted     Boolean  @default(false) @map("is_deleted")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  createdBy     String?  @map("created_by") @db.VarChar(100)
+  updatedBy     String?  @map("updated_by") @db.VarChar(100)
+
+  // Relations
+  company       Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  contacts      Contact[]
+  opportunities Opportunity[]
+  salesOrders   SalesOrder[]
+  cases         Case[]
+  activities    Activity[]
+  documents     Document[]
+  notesList     Note[]
+
+  @@unique([companyId, code])
+  @@index([uuid])
+  @@index([companyId])
+  @@index([email])
+  @@index([status])
+  @@index([assignedTo])
+  @@index([isDeleted])
+  @@map("customers")
+}
+
+/// Bảng quản lý người liên hệ (contacts) của khách hàng
+/// Một customer có thể có nhiều contacts (người đại diện, người liên hệ)
+/// Dùng dual ID: id (Int) cho performance, uuid (String) cho API/security
+model Contact {
+  id         Int      @id @default(autoincrement()) @map("id") // Primary key cho performance
+  uuid       String   @unique @default(uuid()) @map("uuid") // UUID cho API/security
+  customerId Int      @map("customer_id") // ID khách hàng (FK - reference id)
+  firstName  String   @map("first_name") @db.VarChar(100) // Tên
+  lastName   String   @map("last_name") @db.VarChar(100) // Họ
+  title      String?  @map("title") @db.VarChar(100) // Chức danh (VD: Giám đốc, Trưởng phòng)
+  email      String?  @map("email") @db.VarChar(255) // Email
+  phone      String?  @map("phone") @db.VarChar(50) // Số điện thoại
+  mobile     String?  @map("mobile") @db.VarChar(50) // Số điện thoại di động
+  isPrimary  Boolean  @default(false) @map("is_primary") // Liên hệ chính (true/false)
+  department String?  @map("department") @db.VarChar(100) // Phòng ban
+  notes      String?  @map("notes") @db.Text // Ghi chú
+  isActive   Boolean  @default(true) @map("is_active")
+  isDeleted  Boolean  @default(false) @map("is_deleted")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  customer   Customer   @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  activities Activity[]
+  tasks      Task[]
+
+  @@index([uuid])
+  @@index([customerId])
+  @@index([email])
+  @@index([isDeleted])
+  @@map("contacts")
+}
+
+// ============================================
+// CRM MODULE 2: SALES / OPPORTUNITY MANAGEMENT
+// ============================================
+
+/// Bảng quản lý cơ hội bán hàng (Sales Opportunities)
+/// Theo dõi quá trình bán hàng từ giai đoạn đầu đến khi đóng deal
+/// Mỗi opportunity thuộc về một customer và có thể chuyển thành SalesOrder
+/// Dùng dual ID: id (Int) cho performance, uuid (String) cho API/security
+model Opportunity {
+  id                Int       @id @default(autoincrement()) @map("id") // Primary key cho performance
+  uuid              String    @unique @default(uuid()) @map("uuid") // UUID cho API/security
+  companyId         Int       @map("company_id") // ID công ty (FK - reference id)
+  customerId        Int       @map("customer_id") // ID khách hàng (FK - reference id)
+  code              String    @map("code") @db.VarChar(50) // Mã cơ hội (unique trong công ty)
+  name              String    @map("name") @db.VarChar(255) // Tên cơ hội
+  description       String?   @map("description") @db.Text // Mô tả chi tiết
+  stage             String    @default("PROSPECTING") @map("stage") @db.VarChar(50) // Giai đoạn: PROSPECTING, QUALIFICATION, PROPOSAL, NEGOTIATION, CLOSED_WON, CLOSED_LOST
+  probability       Int       @default(0) @map("probability") // Xác suất thành công: 0-100%
+  amount            Decimal?  @map("amount") @db.Decimal(18, 2) // Giá trị cơ hội
+  currency          String    @default("VND") @map("currency") @db.VarChar(10) // Loại tiền tệ
+  expectedCloseDate DateTime? @map("expected_close_date") // Ngày dự kiến đóng deal
+  actualCloseDate   DateTime? @map("actual_close_date") // Ngày thực tế đóng deal
+  source            String?   @map("source") @db.VarChar(50) // Nguồn cơ hội
+  assignedTo        Int?      @map("assigned_to") // ID user được gán (FK - reference id)
+  competitor        String?   @map("competitor") @db.VarChar(255) // Đối thủ cạnh tranh
+  notes             String?   @map("notes") @db.Text // Ghi chú
+  status            String    @default("OPEN") @map("status") @db.VarChar(50) // Trạng thái: OPEN, WON, LOST, CANCELLED
+  isActive          Boolean   @default(true) @map("is_active")
+  isDeleted         Boolean   @default(false) @map("is_deleted")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+  createdBy         String?   @map("created_by") @db.VarChar(100)
+  updatedBy         String?   @map("updated_by") @db.VarChar(100)
+
+  // Relations
+  company    Company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  customer   Customer             @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  products   OpportunityProduct[]
+  activities Activity[]
+  tasks      Task[]
+  documents  Document[]
+  notesList  Note[]
+
+  @@unique([companyId, code])
+  @@index([uuid])
+  @@index([companyId])
+  @@index([customerId])
+  @@index([stage])
+  @@index([assignedTo])
+  @@index([status])
+  @@index([isDeleted])
+  @@map("opportunities")
+}
+
+/// Bảng chi tiết sản phẩm trong cơ hội bán hàng
+/// Một opportunity có thể có nhiều products với số lượng, giá, discount
+/// Dùng autoincrement vì chỉ là detail table, không cần merge data
+model OpportunityProduct {
+  id            Int      @id @default(autoincrement()) @map("id") // Auto increment ID
+  opportunityId Int      @map("opportunity_id") // ID cơ hội (FK - reference id)
+  productId     Int?     @map("product_id") // ID sản phẩm (FK, optional - reference id)
+  productName   String   @map("product_name") @db.VarChar(255) // Tên sản phẩm
+  quantity      Decimal  @map("quantity") @db.Decimal(18, 4) // Số lượng
+  unitPrice     Decimal  @map("unit_price") @db.Decimal(18, 2) // Đơn giá
+  discount      Decimal  @default(0) @map("discount") @db.Decimal(18, 2) // Giảm giá
+  taxRate       Decimal  @default(0) @map("tax_rate") @db.Decimal(5, 2) // Thuế suất (%)
+  totalAmount   Decimal  @map("total_amount") @db.Decimal(18, 2) // Tổng tiền (sau thuế, discount)
+  notes         String?  @map("notes") @db.Text // Ghi chú
+  isDeleted     Boolean  @default(false) @map("is_deleted")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  opportunity Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+
+  @@index([opportunityId])
+  @@index([isDeleted])
+  @@map("opportunity_products")
+}
+
+/// Bảng quản lý đơn hàng bán (Sales Orders)
+/// Đơn hàng có thể được tạo từ Opportunity hoặc trực tiếp
+/// Mỗi đơn hàng có nhiều items (SalesOrderItem)
+/// Dùng dual ID: id (Int) cho performance, uuid (String) cho API/security
+model SalesOrder {
+  id              Int       @id @default(autoincrement()) @map("id") // Primary key cho performance
+  uuid            String    @unique @default(uuid()) @map("uuid") // UUID cho API/security
+  companyId       Int       @map("company_id") // ID công ty (FK - reference id)
+  customerId      Int       @map("customer_id") // ID khách hàng (FK - reference id)
+  opportunityId   Int?      @map("opportunity_id") // ID cơ hội (FK, optional - reference id)
+  code            String    @map("code") @db.VarChar(50) // Mã đơn hàng (unique trong công ty)
+  orderDate       DateTime  @default(now()) @map("order_date") // Ngày đặt hàng
+  deliveryDate    DateTime? @map("delivery_date") // Ngày giao hàng dự kiến
+  currency        String    @default("VND") @map("currency") @db.VarChar(10) // Loại tiền tệ
+  subtotal        Decimal   @default(0) @map("subtotal") @db.Decimal(18, 2) // Tổng tiền trước thuế, discount
+  discount        Decimal   @default(0) @map("discount") @db.Decimal(18, 2) // Tổng giảm giá
+  taxAmount       Decimal   @default(0) @map("tax_amount") @db.Decimal(18, 2) // Tổng thuế
+  totalAmount     Decimal   @default(0) @map("total_amount") @db.Decimal(18, 2) // Tổng tiền cuối cùng
+  paymentTerm     String?   @map("payment_term") @db.VarChar(50) // Điều khoản thanh toán
+  shippingAddress String?   @map("shipping_address") @db.Text // Địa chỉ giao hàng
+  billingAddress  String?   @map("billing_address") @db.Text // Địa chỉ hóa đơn
+  notes           String?   @map("notes") @db.Text // Ghi chú
+  status          String    @default("DRAFT") @map("status") @db.VarChar(50) // Trạng thái: DRAFT, CONFIRMED, SHIPPED, DELIVERED, CANCELLED
+  assignedTo      Int?      @map("assigned_to") // ID user được gán (FK - reference id)
+  isDeleted       Boolean   @default(false) @map("is_deleted")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  createdBy       String?   @map("created_by") @db.VarChar(100)
+  updatedBy       String?   @map("updated_by") @db.VarChar(100)
+
+  // Relations
+  company    Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  customer   Customer         @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  items      SalesOrderItem[]
+  activities Activity[]
+  documents  Document[]
+
+  @@unique([companyId, code])
+  @@index([uuid])
+  @@index([companyId])
+  @@index([customerId])
+  @@index([status])
+  @@index([orderDate])
+  @@index([isDeleted])
+  @@map("sales_orders")
+}
+
+/// Bảng chi tiết sản phẩm trong đơn hàng
+/// Một SalesOrder có nhiều items, mỗi item là một sản phẩm với số lượng, giá, thuế
+/// Dùng autoincrement vì chỉ là detail table, không cần merge data
+model SalesOrderItem {
+  id           Int      @id @default(autoincrement()) @map("id") // Auto increment ID
+  salesOrderId Int      @map("sales_order_id") // ID đơn hàng (FK - reference id)
+  productId    Int?     @map("product_id") // ID sản phẩm (FK, optional - reference id)
+  productName  String   @map("product_name") @db.VarChar(255) // Tên sản phẩm
+  quantity     Decimal  @map("quantity") @db.Decimal(18, 4) // Số lượng
+  unitPrice    Decimal  @map("unit_price") @db.Decimal(18, 2) // Đơn giá
+  discount     Decimal  @default(0) @map("discount") @db.Decimal(18, 2) // Giảm giá
+  taxRate      Decimal  @default(0) @map("tax_rate") @db.Decimal(5, 2) // Thuế suất (%)
+  totalAmount  Decimal  @map("total_amount") @db.Decimal(18, 2) // Tổng tiền item (sau thuế, discount)
+  notes        String?  @map("notes") @db.Text // Ghi chú
+  isDeleted    Boolean  @default(false) @map("is_deleted")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  salesOrder SalesOrder @relation(fields: [salesOrderId], references: [id], onDelete: Cascade)
+
+  @@index([salesOrderId])
+  @@index([isDeleted])
+  @@map("sales_order_items")
+}
+
+// ============================================
+// CRM MODULE 3: MARKETING AUTOMATION
+// ============================================
+
+/// Bảng quản lý chiến dịch marketing
+/// Mỗi campaign có nhiều targets (customers, contacts, leads) thông qua CampaignTarget
+/// Dùng dual ID: id (Int) cho performance, uuid (String) cho API/security
+model Campaign {
+  id          Int       @id @default(autoincrement()) @map("id") // Primary key cho performance
+  uuid        String    @unique @default(uuid()) @map("uuid") // UUID cho API/security
+  companyId   Int       @map("company_id") // ID công ty (FK - reference id)
+  code        String    @map("code") @db.VarChar(50) // Mã chiến dịch (unique trong công ty)
+  name        String    @map("name") @db.VarChar(255) // Tên chiến dịch
+  type        String    @map("type") @db.VarChar(50) // Loại: EMAIL, SMS, SOCIAL, EVENT, etc.
+  description String?   @map("description") @db.Text // Mô tả chiến dịch
+  startDate   DateTime? @map("start_date") // Ngày bắt đầu
+  endDate     DateTime? @map("end_date") // Ngày kết thúc
+  budget      Decimal?  @map("budget") @db.Decimal(18, 2) // Ngân sách
+  currency    String    @default("VND") @map("currency") @db.VarChar(10) // Loại tiền tệ
+  status      String    @default("PLANNED") @map("status") @db.VarChar(50) // Trạng thái: PLANNED, ACTIVE, COMPLETED, CANCELLED
+  assignedTo  Int?      @map("assigned_to") // ID user được gán (FK - reference id)
+  notes       String?   @map("notes") @db.Text // Ghi chú
+  isActive    Boolean   @default(true) @map("is_active")
+  isDeleted   Boolean   @default(false) @map("is_deleted")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  createdBy   String?   @map("created_by") @db.VarChar(100)
+  updatedBy   String?   @map("updated_by") @db.VarChar(100)
+
+  // Relations
+  company         Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  campaignTargets CampaignTarget[]
+  activities      Activity[]
+  documents       Document[]
+
+  @@unique([companyId, code])
+  @@index([uuid])
+  @@index([companyId])
+  @@index([status])
+  @@index([type])
+  @@index([isDeleted])
+  @@map("campaigns")
+}
+
+/// Bảng quản lý đối tượng mục tiêu của chiến dịch
+/// Một campaign có nhiều targets (customers, contacts, leads)
+/// Theo dõi trạng thái liên hệ và chuyển đổi của từng target
+/// Dùng autoincrement vì chỉ là detail table, không cần merge data
+model CampaignTarget {
+  id          Int       @id @default(autoincrement()) @map("id") // Auto increment ID
+  campaignId  Int       @map("campaign_id") // ID chiến dịch (FK - reference id)
+  targetType  String    @map("target_type") @db.VarChar(50) // Loại đối tượng: CUSTOMER, CONTACT, LEAD
+  targetId    String    @map("target_id") @db.VarChar(36) // ID đối tượng (polymorphic - có thể là UUID của Customer/Contact/Lead)
+  status      String    @default("PENDING") @map("status") @db.VarChar(50) // Trạng thái: PENDING, CONTACTED, RESPONDED, CONVERTED
+  respondedAt DateTime? @map("responded_at") // Ngày phản hồi
+  convertedAt DateTime? @map("converted_at") // Ngày chuyển đổi (thành customer/opportunity)
+  notes       String?   @map("notes") @db.Text // Ghi chú
+  isDeleted   Boolean   @default(false) @map("is_deleted")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, targetType, targetId])
+  @@index([campaignId])
+  @@index([targetId])
+  @@index([isDeleted])
+  @@map("campaign_targets")
+}
+
+/// Bảng quản lý khách hàng tiềm năng (Leads)
+/// Leads có thể được chuyển đổi thành Customer khi đủ điều kiện
+/// Mỗi lead có thể đến từ một Campaign
+/// Dùng dual ID: id (Int) cho performance, uuid (String) cho API/security
+model Lead {
+  id                    Int       @id @default(autoincrement()) @map("id") // Primary key cho performance
+  uuid                  String    @unique @default(uuid()) @map("uuid") // UUID cho API/security
+  companyId             Int       @map("company_id") // ID công ty (FK - reference id)
+  code                  String    @map("code") @db.VarChar(50) // Mã lead (unique trong công ty)
+  firstName             String    @map("first_name") @db.VarChar(100) // Tên
+  lastName              String    @map("last_name") @db.VarChar(100) // Họ
+  email                 String?   @map("email") @db.VarChar(255) // Email
+  phone                 String?   @map("phone") @db.VarChar(50) // Số điện thoại
+  company               String?   @map("company") @db.VarChar(255) // Tên công ty (nếu có)
+  title                 String?   @map("title") @db.VarChar(100) // Chức danh
+  industry              String?   @map("industry") @db.VarChar(100) // Ngành nghề
+  source                String?   @map("source") @db.VarChar(50) // Nguồn: WEBSITE, REFERRAL, CAMPAIGN, etc.
+  campaignId            Int?      @map("campaign_id") // ID chiến dịch (FK, optional - reference id)
+  status                String    @default("NEW") @map("status") @db.VarChar(50) // Trạng thái: NEW, CONTACTED, QUALIFIED, CONVERTED, LOST
+  rating                Int       @default(0) @map("rating") // Đánh giá chất lượng: 1-5
+  assignedTo            Int?      @map("assigned_to") // ID user được gán (FK - reference id)
+  notes                 String?   @map("notes") @db.Text // Ghi chú
+  convertedToCustomerId Int?      @map("converted_to_customer_id") // ID customer sau khi convert (FK - reference id)
+  convertedAt           DateTime? @map("converted_at") // Ngày chuyển đổi thành customer
+  isActive              Boolean   @default(true) @map("is_active")
+  isDeleted             Boolean   @default(false) @map("is_deleted")
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
+  createdBy             String?   @map("created_by") @db.VarChar(100)
+  updatedBy             String?   @map("updated_by") @db.VarChar(100)
+
+  // Relations
+  activities Activity[]
+  tasks      Task[]
+  documents  Document[]
+  notesList  Note[]
+
+  @@unique([companyId, code])
+  @@index([companyId])
+  @@index([email])
+  @@index([status])
+  @@index([assignedTo])
+  @@index([isDeleted])
+  @@map("leads")
+}
+
+// ============================================
+// CRM MODULE 4: SERVICE & SUPPORT
+// ============================================
+
+/// Bảng quản lý case (yêu cầu hỗ trợ) từ khách hàng
+/// Mỗi case có thể có nhiều tickets, theo dõi quá trình xử lý và đánh giá từ khách hàng
+/// Dùng dual ID: id (Int) cho performance, uuid (String) cho API/security
+model Case {
+  id               Int       @id @default(autoincrement()) @map("id") // Primary key cho performance
+  uuid             String    @unique @default(uuid()) @map("uuid") // UUID cho API/security
+  companyId        Int       @map("company_id") // ID công ty (FK - reference id)
+  customerId       Int       @map("customer_id") // ID khách hàng (FK - reference id)
+  code             String    @map("code") @db.VarChar(50) // Mã case (unique trong công ty)
+  subject          String    @map("subject") @db.VarChar(255) // Tiêu đề case
+  description      String?   @map("description") @db.Text // Mô tả chi tiết
+  type             String?   @map("type") @db.VarChar(50) // Loại: QUESTION, PROBLEM, FEATURE_REQUEST, etc.
+  priority         String    @default("MEDIUM") @map("priority") @db.VarChar(50) // Độ ưu tiên: LOW, MEDIUM, HIGH, CRITICAL
+  status           String    @default("NEW") @map("status") @db.VarChar(50) // Trạng thái: NEW, IN_PROGRESS, WAITING, RESOLVED, CLOSED
+  assignedTo       Int?      @map("assigned_to") // ID user được gán xử lý (FK - reference id)
+  resolution       String?   @map("resolution") @db.Text // Giải pháp/cách xử lý
+  resolvedAt       DateTime? @map("resolved_at") // Ngày giải quyết
+  closedAt         DateTime? @map("closed_at") // Ngày đóng case
+  customerRating   Int?      @map("customer_rating") // Đánh giá từ khách hàng: 1-5 sao
+  customerFeedback String?   @map("customer_feedback") @db.Text // Phản hồi từ khách hàng
+  isActive         Boolean   @default(true) @map("is_active")
+  isDeleted        Boolean   @default(false) @map("is_deleted")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+  createdBy        String?   @map("created_by") @db.VarChar(100)
+  updatedBy        String?   @map("updated_by") @db.VarChar(100)
+
+  // Relations
+  company    Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  customer   Customer   @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  tickets    Ticket[]
+  activities Activity[]
+  documents  Document[]
+  notesList  Note[]
+
+  @@unique([companyId, code])
+  @@index([companyId])
+  @@index([customerId])
+  @@index([status])
+  @@index([priority])
+  @@index([assignedTo])
+  @@index([isDeleted])
+  @@map("cases")
+}
+
+/// Bảng quản lý ticket (phiếu yêu cầu hỗ trợ)
+/// Ticket có thể thuộc về một Case hoặc độc lập
+/// Theo dõi quá trình xử lý từng ticket cụ thể
+/// Dùng dual ID: id (Int) cho performance, uuid (String) cho API/security
+model Ticket {
+  id          Int       @id @default(autoincrement()) @map("id") // Primary key cho performance
+  uuid        String    @unique @default(uuid()) @map("uuid") // UUID cho API/security
+  caseId      Int?      @map("case_id") // ID case (FK, optional - reference id)
+  code        String    @map("code") @db.VarChar(50) // Mã ticket (unique)
+  subject     String    @map("subject") @db.VarChar(255) // Tiêu đề ticket
+  description String?   @map("description") @db.Text // Mô tả chi tiết
+  type        String?   @map("type") @db.VarChar(50) // Loại ticket
+  priority    String    @default("MEDIUM") @map("priority") @db.VarChar(50) // Độ ưu tiên: LOW, MEDIUM, HIGH, CRITICAL
+  status      String    @default("OPEN") @map("status") @db.VarChar(50) // Trạng thái: OPEN, IN_PROGRESS, WAITING, RESOLVED, CLOSED
+  assignedTo  Int?      @map("assigned_to") // ID user được gán xử lý (FK - reference id)
+  createdBy   Int       @map("created_by") // ID user tạo ticket (FK - reference id)
+  resolvedAt  DateTime? @map("resolved_at") // Ngày giải quyết
+  closedAt    DateTime? @map("closed_at") // Ngày đóng ticket
+  isDeleted   Boolean   @default(false) @map("is_deleted")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  case         Case?      @relation(fields: [caseId], references: [id], onDelete: SetNull)
+  assignedUser User?      @relation("AssignedTo", fields: [assignedTo], references: [id], onDelete: SetNull)
+  creator      User       @relation("CreatedBy", fields: [createdBy], references: [id], onDelete: Cascade)
+  activities   Activity[]
+  documents    Document[]
+  notesList    Note[]
+
+  @@unique([code])
+  @@index([uuid])
+  @@index([caseId])
+  @@index([status])
+  @@index([assignedTo])
+  @@index([isDeleted])
+  @@map("tickets")
+}
+
+// ============================================
+// CRM MODULE 5: DOCUMENT MANAGEMENT & MAILROOM
+// ============================================
+
+/// Bảng quản lý tài liệu/file đính kèm
+/// Document có thể gắn với nhiều entity khác nhau (Customer, Opportunity, Case, Ticket) thông qua entityType + entityId
+/// Dùng dual ID: id (Int) cho performance, uuid (String) cho API/security
+model Document {
+  id          Int      @id @default(autoincrement()) @map("id") // Primary key cho performance
+  uuid        String   @unique @default(uuid()) @map("uuid") // UUID cho API/security
+  companyId   Int?     @map("company_id") // ID công ty (FK, optional - reference id)
+  userId      Int?     @map("user_id") // ID user upload (FK, optional - reference id)
+  entityType  String?  @map("entity_type") @db.VarChar(50) // Loại entity: CUSTOMER, OPPORTUNITY, CASE, TICKET, etc.
+  entityId    String?  @map("entity_id") @db.VarChar(36) // ID entity (polymorphic - có thể là UUID của entity)
+  name        String   @map("name") @db.VarChar(255) // Tên hiển thị
+  fileName    String   @map("file_name") @db.VarChar(500) // Tên file gốc
+  filePath    String   @map("file_path") @db.VarChar(1000) // Đường dẫn file trên server
+  fileSize    Int      @default(0) @map("file_size") // Kích thước file (bytes)
+  mimeType    String?  @map("mime_type") @db.VarChar(100) // Loại file (VD: application/pdf, image/jpeg)
+  category    String?  @map("category") @db.VarChar(50) // Danh mục: CONTRACT, INVOICE, PROPOSAL, etc.
+  description String?  @map("description") @db.Text // Mô tả
+  version     Int      @default(1) @map("version") // Phiên bản file
+  isPublic    Boolean  @default(false) @map("is_public") // Công khai (true) hay riêng tư (false)
+  tags        String?  @map("tags") @db.Text // Tags dạng JSON array
+  isDeleted   Boolean  @default(false) @map("is_deleted")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  company       Company?     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user          User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  customer      Customer?    @relation(fields: [customerId], references: [id])
+  customerId    Int?
+  opportunity   Opportunity? @relation(fields: [opportunityId], references: [id])
+  opportunityId Int?
+  salesOrder    SalesOrder?  @relation(fields: [salesOrderId], references: [id])
+  salesOrderId  Int?
+  campaign      Campaign?    @relation(fields: [campaignId], references: [id])
+  campaignId    Int?
+  lead          Lead?        @relation(fields: [leadId], references: [id])
+  leadId        Int?
+  case          Case?        @relation(fields: [caseId], references: [id])
+  caseId        Int?
+  ticket        Ticket?      @relation(fields: [ticketId], references: [id])
+  ticketId      Int?
+
+  @@index([uuid])
+  @@index([companyId])
+  @@index([entityType, entityId])
+  @@index([userId])
+  @@index([isDeleted])
+  @@map("documents")
+}
+
+/// Bảng quản lý email (Mailroom)
+/// Lưu trữ lịch sử email gửi/nhận, có thể gắn với các entity khác
+/// Dùng dual ID: id (Int) cho performance, uuid (String) cho API/security
+model Email {
+  id          Int       @id @default(autoincrement()) @map("id") // Primary key cho performance
+  uuid        String    @unique @default(uuid()) @map("uuid") // UUID cho API/security
+  companyId   Int?      @map("company_id") // ID công ty (FK, optional - reference id)
+  fromEmail   String    @map("from_email") @db.VarChar(255) // Email người gửi
+  toEmail     String    @map("to_email") @db.VarChar(255) // Email người nhận
+  ccEmail     String?   @map("cc_email") @db.Text // Email CC (có thể nhiều, phân cách bằng dấu phẩy)
+  bccEmail    String?   @map("bcc_email") @db.Text // Email BCC (có thể nhiều, phân cách bằng dấu phẩy)
+  subject     String    @map("subject") @db.VarChar(500) // Tiêu đề email
+  body        String?   @map("body") @db.LongText // Nội dung text
+  bodyHtml    String?   @map("body_html") @db.LongText // Nội dung HTML
+  entityType  String?   @map("entity_type") @db.VarChar(50) // Loại entity liên quan (polymorphic)
+  entityId    String?   @map("entity_id") @db.VarChar(36) // ID entity liên quan (polymorphic)
+  direction   String    @default("OUTBOUND") @map("direction") @db.VarChar(50) // Hướng: INBOUND (nhận), OUTBOUND (gửi)
+  status      String    @default("SENT") @map("status") @db.VarChar(50) // Trạng thái: SENT, DRAFT, FAILED, BOUNCED
+  sentAt      DateTime? @map("sent_at") // Ngày giờ gửi
+  readAt      DateTime? @map("read_at") // Ngày giờ đọc (nếu có tracking)
+  attachments String?   @map("attachments") @db.Text // Danh sách file đính kèm dạng JSON array
+  isDeleted   Boolean   @default(false) @map("is_deleted")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  @@index([uuid])
+  @@index([companyId])
+  @@index([entityType, entityId])
+  @@index([fromEmail])
+  @@index([toEmail])
+  @@index([isDeleted])
+  @@map("emails")
+}
+
+// ============================================
+// CRM MODULE 6: ACTIVITIES & TASKS
+// ============================================
+
+/// Bảng quản lý hoạt động (Activities)
+/// Lưu trữ lịch sử các hoạt động: cuộc gọi, email, meeting, note, task
+/// Có thể gắn với nhiều entity khác nhau (Customer, Opportunity, Case, Ticket, Campaign, Contact, Lead)
+/// Dùng dual ID: id (Int) cho performance, uuid (String) cho API/security
+model Activity {
+  id          Int       @id @default(autoincrement()) @map("id") // Primary key cho performance
+  uuid        String    @unique @default(uuid()) @map("uuid") // UUID cho API/security
+  companyId   Int?      @map("company_id") // ID công ty (FK, optional - reference id)
+  userId      Int       @map("user_id") // ID user thực hiện (FK - reference id)
+  entityType  String?   @map("entity_type") @db.VarChar(50) // Loại entity: CUSTOMER, OPPORTUNITY, CASE, TICKET, etc.
+  entityId    String?   @map("entity_id") @db.VarChar(36) // ID entity (polymorphic - có thể là UUID của entity)
+  type        String    @map("type") @db.VarChar(50) // Loại hoạt động: CALL, EMAIL, MEETING, NOTE, TASK, etc.
+  subject     String    @map("subject") @db.VarChar(255) // Tiêu đề hoạt động
+  description String?   @map("description") @db.Text // Mô tả chi tiết
+  startDate   DateTime? @map("start_date") // Ngày giờ bắt đầu
+  endDate     DateTime? @map("end_date") // Ngày giờ kết thúc
+  duration    Int?      @map("duration") // Thời lượng (phút)
+  location    String?   @map("location") @db.VarChar(255) // Địa điểm (cho meeting)
+  status      String    @default("PLANNED") @map("status") @db.VarChar(50) // Trạng thái: PLANNED, COMPLETED, CANCELLED
+  priority    String    @default("MEDIUM") @map("priority") @db.VarChar(50) // Độ ưu tiên: LOW, MEDIUM, HIGH
+  result      String?   @map("result") @db.Text // Kết quả hoạt động
+  isDeleted   Boolean   @default(false) @map("is_deleted")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Note: entityType + entityId used for polymorphic relations (Customer, Opportunity, Case, Ticket, Campaign, Contact, Lead)
+  customer      Customer?    @relation(fields: [customerId], references: [id])
+  customerId    Int?
+  contact       Contact?     @relation(fields: [contactId], references: [id])
+  contactId     Int?
+  opportunity   Opportunity? @relation(fields: [opportunityId], references: [id])
+  opportunityId Int?
+  salesOrder    SalesOrder?  @relation(fields: [salesOrderId], references: [id])
+  salesOrderId  Int?
+  campaign      Campaign?    @relation(fields: [campaignId], references: [id])
+  campaignId    Int?
+  lead          Lead?        @relation(fields: [leadId], references: [id])
+  leadId        Int?
+  case          Case?        @relation(fields: [caseId], references: [id])
+  caseId        Int?
+  ticket        Ticket?      @relation(fields: [ticketId], references: [id])
+  ticketId      Int?
+
+  @@index([uuid])
+  @@index([companyId])
+  @@index([entityType, entityId])
+  @@index([userId])
+  @@index([type])
+  @@index([status])
+  @@index([isDeleted])
+  @@map("activities")
+}
+
+/// Bảng quản lý công việc (Tasks)
+/// Tasks có thể gắn với Contact, Opportunity, Lead để theo dõi công việc liên quan
+/// Dùng dual ID: id (Int) cho performance, uuid (String) cho API/security
+model Task {
+  id          Int       @id @default(autoincrement()) @map("id") // Primary key cho performance
+  uuid        String    @unique @default(uuid()) @map("uuid") // UUID cho API/security
+  userId      Int       @map("user_id") // ID user được gán (FK - reference id)
+  entityType  String?   @map("entity_type") @db.VarChar(50) // Loại entity liên quan (polymorphic)
+  entityId    String?   @map("entity_id") @db.VarChar(36) // ID entity liên quan (polymorphic - có thể là UUID)
+  title       String    @map("title") @db.VarChar(255) // Tiêu đề công việc
+  description String?   @map("description") @db.Text // Mô tả chi tiết
+  dueDate     DateTime? @map("due_date") // Hạn hoàn thành
+  priority    String    @default("MEDIUM") @map("priority") @db.VarChar(50) // Độ ưu tiên: LOW, MEDIUM, HIGH
+  status      String    @default("PENDING") @map("status") @db.VarChar(50) // Trạng thái: PENDING, IN_PROGRESS, COMPLETED, CANCELLED
+  completedAt DateTime? @map("completed_at") // Ngày hoàn thành
+  isDeleted   Boolean   @default(false) @map("is_deleted")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Note: entityType + entityId used for polymorphic relations (Contact, Opportunity, Lead, etc.)
+  contact       Contact?     @relation(fields: [contactId], references: [id])
+  contactId     Int?
+  opportunity   Opportunity? @relation(fields: [opportunityId], references: [id])
+  opportunityId Int?
+  lead          Lead?        @relation(fields: [leadId], references: [id])
+  leadId        Int?
+
+  @@index([uuid])
+  @@index([userId])
+  @@index([entityType, entityId])
+  @@index([status])
+  @@index([dueDate])
+  @@index([isDeleted])
+  @@map("tasks")
+}
+
+/// Bảng quản lý ghi chú (Notes)
+/// Notes có thể gắn với Customer, Opportunity, Case, Ticket, Lead
+/// Có thể đánh dấu private (chỉ user tạo mới thấy) hoặc public
+/// Dùng dual ID: id (Int) cho performance, uuid (String) cho API/security
+model Note {
+  id         Int      @id @default(autoincrement()) @map("id") // Primary key cho performance
+  uuid       String   @unique @default(uuid()) @map("uuid") // UUID cho API/security
+  userId     Int      @map("user_id") // ID user tạo note (FK - reference id)
+  entityType String   @map("entity_type") @db.VarChar(50) // Loại entity: CUSTOMER, OPPORTUNITY, CASE, TICKET, LEAD
+  entityId   String   @map("entity_id") @db.VarChar(36) // ID entity (polymorphic - có thể là UUID của entity)
+  title      String?  @map("title") @db.VarChar(255) // Tiêu đề note
+  content    String   @map("content") @db.Text // Nội dung note
+  isPrivate  Boolean  @default(false) @map("is_private") // Riêng tư (true) hay công khai (false)
+  tags       String?  @map("tags") @db.Text // Tags dạng JSON array
+  isDeleted  Boolean  @default(false) @map("is_deleted")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Note: entityType + entityId used for polymorphic relations (Customer, Opportunity, Case, Ticket, Lead, etc.)
+  customer      Customer?    @relation(fields: [customerId], references: [id])
+  customerId    Int?
+  opportunity   Opportunity? @relation(fields: [opportunityId], references: [id])
+  opportunityId Int?
+  lead          Lead?        @relation(fields: [leadId], references: [id])
+  leadId        Int?
+  case          Case?        @relation(fields: [caseId], references: [id])
+  caseId        Int?
+  ticket        Ticket?      @relation(fields: [ticketId], references: [id])
+  ticketId      Int?
+
+  @@index([uuid])
+  @@index([entityType, entityId])
+  @@index([userId])
+  @@index([isDeleted])
+  @@map("notes")
+}
+
+// ============================================
+// ERP MODULES (Basic - for integration)
+// ============================================
+
+/// Bảng quản lý sản phẩm/dịch vụ
+/// Sản phẩm được sử dụng trong OpportunityProduct và SalesOrderItem
+/// Dùng dual ID: id (Int) cho performance, uuid (String) cho API/security
+model Product {
+  id          Int      @id @default(autoincrement()) @map("id") // Primary key cho performance
+  uuid        String   @unique @default(uuid()) @map("uuid") // UUID cho API/security
+  companyId   Int      @map("company_id") // ID công ty (FK - reference id)
+  code        String   @map("code") @db.VarChar(50) // Mã sản phẩm (unique trong công ty)
+  name        String   @map("name") @db.VarChar(255) // Tên sản phẩm
+  description String?  @map("description") @db.Text // Mô tả sản phẩm
+  category    String?  @map("category") @db.VarChar(100) // Danh mục sản phẩm
+  unitPrice   Decimal  @default(0) @map("unit_price") @db.Decimal(18, 2) // Đơn giá mặc định
+  currency    String   @default("VND") @map("currency") @db.VarChar(10) // Loại tiền tệ
+  isActive    Boolean  @default(true) @map("is_active")
+  isDeleted   Boolean  @default(false) @map("is_deleted")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, code])
+  @@index([uuid])
+  @@index([companyId])
+  @@index([isDeleted])
+  @@map("products")
+}
+
+/// Bảng quản lý nhà cung cấp (Vendors)
+/// Lưu trữ thông tin các nhà cung cấp của công ty
+/// Dùng dual ID: id (Int) cho performance, uuid (String) cho API/security
+model Vendor {
+  id        Int      @id @default(autoincrement()) @map("id") // Primary key cho performance
+  uuid      String   @unique @default(uuid()) @map("uuid") // UUID cho API/security
+  companyId Int      @map("company_id") // ID công ty (FK - reference id)
+  code      String   @map("code") @db.VarChar(50) // Mã nhà cung cấp (unique trong công ty)
+  name      String   @map("name") @db.VarChar(255) // Tên nhà cung cấp
+  taxCode   String?  @map("tax_code") @db.VarChar(50) // Mã số thuế
+  email     String?  @map("email") @db.VarChar(255) // Email liên hệ
+  phone     String?  @map("phone") @db.VarChar(50) // Số điện thoại
+  address   String?  @map("address") @db.Text // Địa chỉ
+  isActive  Boolean  @default(true) @map("is_active")
+  isDeleted Boolean  @default(false) @map("is_deleted")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, code])
+  @@index([uuid])
+  @@index([companyId])
+  @@index([isDeleted])
+  @@map("vendors")
+}
+
+/// Bảng quản lý kho hàng (Warehouses)
+/// Mỗi warehouse thuộc về một branch, dùng để quản lý tồn kho
+/// Dùng dual ID: id (Int) cho performance, uuid (String) cho API/security
+model Warehouse {
+  id        Int      @id @default(autoincrement()) @map("id") // Primary key cho performance
+  uuid      String   @unique @default(uuid()) @map("uuid") // UUID cho API/security
+  branchId  Int      @map("branch_id") // ID chi nhánh (FK - reference id)
+  code      String   @map("code") @db.VarChar(50) // Mã kho (unique trong branch)
+  name      String   @map("name") @db.VarChar(255) // Tên kho
+  address   String?  @map("address") @db.Text // Địa chỉ kho
+  isActive  Boolean  @default(true) @map("is_active")
+  isDeleted Boolean  @default(false) @map("is_deleted")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  branch Branch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  @@unique([branchId, code])
+  @@index([uuid])
+  @@index([branchId])
+  @@index([isDeleted])
+  @@map("warehouses")
+}
+
+/// Bảng quản lý tài khoản kế toán (Chart of Accounts)
+/// Hệ thống tài khoản dùng cho module Finance/Accounting
+/// Có thể có cấu trúc cây (parent-child) thông qua parentId
+/// Dùng dual ID: id (Int) cho performance, uuid (String) cho API/security
+model Account {
+  id        Int      @id @default(autoincrement()) @map("id") // Primary key cho performance
+  uuid      String   @unique @default(uuid()) @map("uuid") // UUID cho API/security
+  companyId Int      @map("company_id") // ID công ty (FK - reference id)
+  code      String   @map("code") @db.VarChar(50) // Mã tài khoản (unique trong công ty)
+  name      String   @map("name") @db.VarChar(255) // Tên tài khoản
+  type      String   @map("type") @db.VarChar(50) // Loại: ASSET, LIABILITY, EQUITY, INCOME, EXPENSE
+  parentId  Int?     @map("parent_id") // ID tài khoản cha (FK, optional - reference id)
+  isActive  Boolean  @default(true) @map("is_active")
+  isDeleted Boolean  @default(false) @map("is_deleted")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, code])
+  @@index([uuid])
+  @@index([companyId])
+  @@index([type])
+  @@index([isDeleted])
+  @@map("accounts")
+}

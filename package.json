@@ -1,0 +1,42 @@
+{
+  "name": "base-crm",
+  "version": "0.0.1",
+  "description": "Base CRM Monorepo - Backend API and Frontend Web",
+  "author": "",
+  "private": true,
+  "license": "UNLICENSED",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:api": "npm run start:dev --workspace=apps/api",
+    "debug:api": "npm run start:debug --workspace=apps/api",
+    "dev:web": "npm run dev --workspace=apps/web",
+    "dev": "concurrently \"npm run dev:api\" \"npm run dev:web\" --names \"API,WEB\" --prefix-colors \"blue,green\"",
+    "build:shared": "npm run build --workspace=@base-crm/shared",
+    "build:api": "npm run build --workspace=apps/api",
+    "build:web": "npm run build --workspace=apps/web",
+    "build": "npm run build:shared && npm run build:api && npm run build:web",
+    "lint": "npm run lint --workspaces",
+    "test": "npm run test --workspaces",
+    "db:seed": "npx prisma db seed"
+  },
+  "prisma": {
+    "seed": "ts-node --compiler-options {\"module\":\"CommonJS\"} prisma/seed.ts"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "ts-node": "^10.9.2",
+    "@types/node": "^22.10.7",
+    "typescript": "^5.7.3"
+  },
+  "dependencies": {
+    "bcrypt": "^6.0.0",
+    "@prisma/client": "^6.2.0"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  }
+}

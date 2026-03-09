@@ -1,0 +1,60 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug NestJS API (Watch)",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "start:debug"],
+      "console": "integratedTerminal",
+      "restart": true,
+      "protocol": "inspector",
+      "env": {
+        "NODE_ENV": "development"
+      },
+      "sourceMaps": true,
+      "cwd": "${workspaceFolder}/apps/api",
+      "skipFiles": ["<node_internals>/**"],
+      "autoAttachChildProcesses": true
+    },
+    {
+      "name": "Attach to NestJS API",
+      "type": "node",
+      "request": "attach",
+      "port": 9229,
+      "restart": true,
+      "protocol": "inspector",
+      "sourceMaps": true,
+      "skipFiles": ["<node_internals>/**"],
+      "localRoot": "${workspaceFolder}/apps/api",
+      "remoteRoot": "${workspaceFolder}/apps/api"
+    },
+    {
+      "name": "Debug NestJS API (ts-node - Watch)",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "--inspect-brk",
+        "-r",
+        "ts-node/register",
+        "-r",
+        "tsconfig-paths/register",
+        "${workspaceFolder}/apps/api/src/main.ts"
+      ],
+      "console": "integratedTerminal",
+      "restart": true,
+      "protocol": "inspector",
+      "env": {
+        "NODE_ENV": "development",
+        "TS_NODE_PROJECT": "${workspaceFolder}/apps/api/tsconfig.json",
+        "TS_NODE_TRANSPILE_ONLY": "true"
+      },
+      "sourceMaps": true,
+      "cwd": "${workspaceFolder}/apps/api",
+      "skipFiles": ["<node_internals>/**"],
+      "autoAttachChildProcesses": true
+    }
+  ]
+}

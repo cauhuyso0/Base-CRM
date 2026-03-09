@@ -1,0 +1,17 @@
+{
+  "name": "@base-crm/shared",
+  "version": "0.0.1",
+  "description": "Shared types and schemas for Base CRM",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.2.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3"
+  }
+}
