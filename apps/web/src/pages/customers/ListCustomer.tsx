@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CreateCustomerRequest, Customer } from '@base-crm/shared';
+import { CreateCustomerRequest, Customer, ListCompany } from '@base-crm/shared';
 import Layout from '../../components/layout/Layout';
 import { customerApi } from '../../api/customer.api';
 import { RefreshCw } from 'lucide-react';
+import { companyApi } from '../../api/company.api';
 
 type ActiveFilter = 'all' | 'active' | 'inactive';
 type SortField = 'createdAt' | 'name' | 'code' | 'rating';
@@ -13,6 +14,7 @@ type TypeFilter = 'all' | 'individual' | 'corporation';
 function ListCustomer() {
   const navigate = useNavigate();
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [companies, setCompanies] = useState<ListCompany[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [searchInput, setSearchInput] = useState('');
@@ -44,6 +46,31 @@ function ListCustomer() {
     }, 400);
     return () => clearTimeout(timer);
   }, [searchInput]);
+
+  const handleOpenCreateModal = async () => {
+    resetCreateForm();
+    setShowCreateModal(true);
+
+    try {
+      const companies = await companyApi.getAll({
+        isActive: true,
+        orderBy: 'createdAt:desc',
+      });
+      setCompanies(companies);
+      if (companies.length > 0) {
+        setForm((prev) => ({
+          ...prev,
+          companyId: companies[0].id,
+        }));
+      }
+    } catch (err: any) {
+      setCreateError(
+        err.response?.data?.message ||
+        err.message ||
+        'Không thể tải danh sách công ty',
+      );
+    }
+  };
 
   useEffect(() => {
     const fetchCustomers = async () => {
@@ -179,10 +206,7 @@ function ListCustomer() {
           <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Danh sách khách hàng</h1>
           <button
             className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600"
-            onClick={() => {
-              resetCreateForm();
-              setShowCreateModal(true);
-            }}
+            onClick={handleOpenCreateModal}
           >
             Thêm khách hàng
           </button>
@@ -402,10 +426,8 @@ function ListCustomer() {
               )}
 
               <div>
-                <label className="block text-sm text-gray-700 mb-1 dark:text-gray-300">Company ID *</label>
-                <input
-                  type="number"
-                  min={1}
+                <label className="block text-sm text-gray-700 mb-1 dark:text-gray-300">Company</label>
+                <select
                   required
                   value={form.companyId}
                   onChange={(e) =>
@@ -415,7 +437,17 @@ function ListCustomer() {
                     }))
                   }
                   className="w-full border rounded-md px-3 py-2 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100"
-                />
+                >
+                  {companies.length === 0 ? (
+                    <option value="">Không có company khả dụng</option>
+                  ) : (
+                    companies.map((company) => (
+                      <option key={company.uuid} value={company.uuid}>
+                        {company.code} - {company.name}
+                      </option>
+                    ))
+                  )}
+                </select>
               </div>
 
               <div>

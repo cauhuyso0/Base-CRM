@@ -68,10 +68,6 @@ export abstract class BaseRepository<
   }
 
   async findAll(filters?: BaseFilterOptions): Promise<T[]> {
-    console.log('🔍 BaseRepository.findAll() called', {
-      className: this.constructor.name,
-      filters,
-    });
     const where = this.buildWhereClause(filters);
     const parsedOrderBy =
       typeof filters?.orderBy === 'string'

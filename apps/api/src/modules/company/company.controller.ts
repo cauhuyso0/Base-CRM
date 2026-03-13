@@ -1,5 +1,11 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Query, ParseIntPipe } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiQuery, ApiBearerAuth } from '@nestjs/swagger';
+import { Controller, Get, Param } from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiParam,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { BaseController } from '../../common/controllers/base.controller';
 import { CompanyService } from './company.service';
 import { CreateCompanyDto, UpdateCompanyDto } from './dto/company.dto';
@@ -18,23 +24,26 @@ export class CompanyController extends BaseController<
   }
 
   @Get('by-code/:code')
-  @ApiOperation({ 
-    summary: 'Find company by code', 
-    description: 'Get company by unique code' 
+  @ApiOperation({
+    summary: 'Find company by code',
+    description: 'Get company by unique code',
   })
-  @ApiParam({ 
-    name: 'code', 
-    description: 'Company code', 
-    example: 'COMP001' 
+  @ApiParam({
+    name: 'code',
+    description: 'Company code',
+    example: 'COMP001',
   })
-  @ApiResponse({ 
-    status: 200, 
+  @ApiResponse({
+    status: 200,
     description: 'Company found',
     schema: {
       type: 'object',
       properties: {
         id: { type: 'number', example: 1 },
-        uuid: { type: 'string', example: '550e8400-e29b-41d4-a716-446655440000' },
+        uuid: {
+          type: 'string',
+          example: '550e8400-e29b-41d4-a716-446655440000',
+        },
         code: { type: 'string', example: 'COMP001' },
         name: { type: 'string', example: 'ABC Corporation' },
         taxCode: { type: 'string', example: '1234567890' },
@@ -55,18 +64,18 @@ export class CompanyController extends BaseController<
   }
 
   @Get('by-uuid/:uuid')
-  @ApiOperation({ 
-    summary: 'Find company by UUID', 
-    description: 'Get company by UUID' 
+  @ApiOperation({
+    summary: 'Find company by UUID',
+    description: 'Get company by UUID',
   })
-  @ApiParam({ 
-    name: 'uuid', 
-    description: 'Company UUID', 
-    example: '550e8400-e29b-41d4-a716-446655440000' 
+  @ApiParam({
+    name: 'uuid',
+    description: 'Company UUID',
+    example: '550e8400-e29b-41d4-a716-446655440000',
   })
-  @ApiResponse({ 
-    status: 200, 
-    description: 'Company found' 
+  @ApiResponse({
+    status: 200,
+    description: 'Company found',
   })
   @ApiResponse({ status: 404, description: 'Company not found' })
   findByUuid(@Param('uuid') uuid: string) {
@@ -74,12 +83,12 @@ export class CompanyController extends BaseController<
   }
 
   @Get('active')
-  @ApiOperation({ 
-    summary: 'Get all active companies', 
-    description: 'Retrieve all active (non-deleted) companies' 
+  @ApiOperation({
+    summary: 'Get all active companies',
+    description: 'Retrieve all active (non-deleted) companies',
   })
-  @ApiResponse({ 
-    status: 200, 
+  @ApiResponse({
+    status: 200,
     description: 'List of active companies',
     schema: {
       type: 'array',
@@ -98,4 +107,3 @@ export class CompanyController extends BaseController<
     return this.service.findActive();
   }
 }
-

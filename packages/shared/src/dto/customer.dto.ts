@@ -52,4 +52,3 @@ export interface UpdateCustomerRequest {
   notes?: string;
   isActive?: boolean;
 }
-

@@ -1,14 +1,18 @@
 import { Injectable } from '@nestjs/common';
 import { BaseRepository } from '../../../common/repositories/base.repository';
+import { PrismaService } from '../../../prisma/prisma.service';
 import { Company } from '@prisma/client';
 import { CreateCompanyDto, UpdateCompanyDto } from '../dto/company.dto';
-
 @Injectable()
 export class CompanyRepository extends BaseRepository<
   Company,
   CreateCompanyDto,
   UpdateCompanyDto
 > {
+  constructor(protected readonly prisma: PrismaService) {
+    super(prisma);
+  }
+
   protected get model() {
     return this.prisma.company;
   }
@@ -20,6 +24,20 @@ export class CompanyRepository extends BaseRepository<
       customers: false,
       vendors: false,
       products: false,
+    };
+  }
+
+  protected get select() {
+    return {
+      uuid: true,
+      code: true,
+      name: true,
+      email: true,
+      phone: true,
+      address: true,
+      website: true,
+      logo: true,
+      isActive: true,
     };
   }
 
