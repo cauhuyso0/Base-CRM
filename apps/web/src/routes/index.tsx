@@ -5,9 +5,14 @@ import Register from '../pages/auth/Register';
 import Dashboard from '../pages/Dashboard';
 import ProtectedRoute from '../components/ProtectedRoute';
 
-// Lazy load ListCustomer component
-const ListCustomer = lazy(() => import('../pages/customers/ListCustomer'));
-const CustomerDetail = lazy(() => import('../pages/customers/CustomerDetail'));
+const ListCompany = lazy(() => import('../pages/companies/ListCompany'));
+const ListBranch = lazy(() => import('../pages/branches/ListBranch'));
+const BusinessSettings = lazy(() => import('../pages/finance/BusinessSettings'));
+const CashflowLedger = lazy(() => import('../pages/finance/CashflowLedger'));
+const TaxSummary = lazy(() => import('../pages/finance/TaxSummary'));
+const OrderBoard = lazy(() => import('../pages/restaurant/OrderBoard'));
+const MenuManagement = lazy(() => import('../pages/restaurant/MenuManagement'));
+const QrOrder = lazy(() => import('../pages/restaurant/QrOrder'));
 
 // Loading fallback component
 const LoadingFallback = () => (
@@ -22,6 +27,14 @@ function AppRoutes() {
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
       <Route
+        path="/order/:token"
+        element={
+          <Suspense fallback={<LoadingFallback />}>
+            <QrOrder />
+          </Suspense>
+        }
+      />
+      <Route
         path="/dashboard"
         element={
           <ProtectedRoute>
@@ -30,21 +43,71 @@ function AppRoutes() {
         }
       />
       <Route
-        path="/customers"
+        path="/companies"
         element={
           <ProtectedRoute>
             <Suspense fallback={<LoadingFallback />}>
-              <ListCustomer />
+              <ListCompany />
             </Suspense>
           </ProtectedRoute>
         }
       />
       <Route
-        path="/customers/:uuid"
+        path="/branches"
         element={
           <ProtectedRoute>
             <Suspense fallback={<LoadingFallback />}>
-              <CustomerDetail />
+              <ListBranch />
+            </Suspense>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/restaurant/orders"
+        element={
+          <ProtectedRoute>
+            <Suspense fallback={<LoadingFallback />}>
+              <OrderBoard />
+            </Suspense>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/restaurant/menu"
+        element={
+          <ProtectedRoute>
+            <Suspense fallback={<LoadingFallback />}>
+              <MenuManagement />
+            </Suspense>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/finance/business-settings"
+        element={
+          <ProtectedRoute>
+            <Suspense fallback={<LoadingFallback />}>
+              <BusinessSettings />
+            </Suspense>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/finance/cashflow"
+        element={
+          <ProtectedRoute>
+            <Suspense fallback={<LoadingFallback />}>
+              <CashflowLedger />
+            </Suspense>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/finance/tax-summary"
+        element={
+          <ProtectedRoute>
+            <Suspense fallback={<LoadingFallback />}>
+              <TaxSummary />
             </Suspense>
           </ProtectedRoute>
         }

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CreateCustomerRequest, Customer, ListCompany } from '@base-crm/shared';
+import { CreateCustomerRequest, ListCompany, ListCustomer as ListCustomerType } from '@base-crm/shared';
 import Layout from '../../components/layout/Layout';
 import { customerApi } from '../../api/customer.api';
 import { RefreshCw } from 'lucide-react';
@@ -13,7 +13,7 @@ type TypeFilter = 'all' | 'individual' | 'corporation';
 
 function ListCustomer() {
   const navigate = useNavigate();
-  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [customers, setCustomers] = useState<ListCustomerType[]>([]);
   const [companies, setCompanies] = useState<ListCompany[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -31,7 +31,7 @@ function ListCustomer() {
   const [createLoading, setCreateLoading] = useState(false);
   const [createError, setCreateError] = useState('');
   const [form, setForm] = useState<CreateCustomerRequest>({
-    companyId: 1,
+    company_uuid: '',
     code: '',
     name: '',
     type: '',
@@ -60,7 +60,7 @@ function ListCustomer() {
       if (companies.length > 0) {
         setForm((prev) => ({
           ...prev,
-          companyId: companies[0].id,
+          company_uuid: companies[0].uuid,
         }));
       }
     } catch (err: any) {
@@ -115,7 +115,7 @@ function ListCustomer() {
 
   const resetCreateForm = () => {
     setForm({
-      companyId: 1,
+      company_uuid: '',
       code: '',
       name: '',
       type: '',
@@ -132,7 +132,7 @@ function ListCustomer() {
 
     try {
       await customerApi.create({
-        companyId: Number(form.companyId),
+        company_uuid: form.company_uuid,
         code: form.code.trim(),
         name: form.name.trim(),
         type: form.type?.trim() || undefined,
@@ -346,7 +346,7 @@ function ListCustomer() {
                         {customer.email || '-'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                        {customer.phone || customer.mobile || '-'}
+                        {customer.phone || '-'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span
@@ -429,11 +429,11 @@ function ListCustomer() {
                 <label className="block text-sm text-gray-700 mb-1 dark:text-gray-300">Company</label>
                 <select
                   required
-                  value={form.companyId}
+                  value={form.company_uuid}
                   onChange={(e) =>
                     setForm((prev) => ({
                       ...prev,
-                      companyId: Number(e.target.value),
+                      company_uuid: e.target.value,
                     }))
                   }
                   className="w-full border rounded-md px-3 py-2 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100"

@@ -7,26 +7,24 @@ export interface DashboardStatsRequest {
 }
 
 export interface DashboardStatsResponse {
-  customers: {
-    total: number;
-    active: number;
+  operations: {
+    totalTables: number;
+    totalMenuItems: number;
+    totalOrders: number;
+    newOrders: number;
+    preparingOrders: number;
+    servedOrders: number;
+    paidOrders: number;
   };
-  opportunities: {
-    total: number;
-    active: number;
-    won: number;
+  finance: {
+    income: number;
+    expense: number;
+    profit: number;
   };
-  salesOrders: {
-    total: number;
-    revenue: number;
-  };
-  cases: {
-    total: number;
-    open: number;
-  };
-  tickets: {
-    total: number;
-    open: number;
+  tax: {
+    output: number;
+    input: number;
+    payable: number;
   };
 }
 

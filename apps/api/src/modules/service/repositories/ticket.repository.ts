@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { BaseRepository } from '../../../common/repositories/base.repository';
+import { PrismaService } from '../../../prisma/prisma.service';
 import { Ticket } from '@prisma/client';
 import { CreateTicketDto, UpdateTicketDto } from '../dto/ticket.dto';
 
@@ -9,6 +10,10 @@ export class TicketRepository extends BaseRepository<
   CreateTicketDto,
   UpdateTicketDto
 > {
+  constructor(protected readonly prisma: PrismaService) {
+    super(prisma);
+  }
+
   protected get model() {
     return this.prisma.ticket;
   }
@@ -28,7 +33,7 @@ export class TicketRepository extends BaseRepository<
     return [
       { subject: { contains: search, mode: 'insensitive' } },
       { description: { contains: search, mode: 'insensitive' } },
-      { ticketNumber: { contains: search, mode: 'insensitive' } },
+      { code: { contains: search, mode: 'insensitive' } },
     ];
   }
 

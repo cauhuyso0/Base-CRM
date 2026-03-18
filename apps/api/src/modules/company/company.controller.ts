@@ -1,4 +1,10 @@
-import { Controller, Get, Param } from '@nestjs/common';
+import {
+  Controller,
+  ForbiddenException,
+  Get,
+  Param,
+  Request,
+} from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
@@ -59,8 +65,10 @@ export class CompanyController extends BaseController<
     },
   })
   @ApiResponse({ status: 404, description: 'Company not found' })
-  findByCode(@Param('code') code: string) {
-    return this.service.findByCode(code);
+  async findByCode(@Request() req: any, @Param('code') code: string) {
+    const company = await this.service.findByCode(code);
+    this.ensureCompanyAccess(req, company.id);
+    return company;
   }
 
   @Get('by-uuid/:uuid')
@@ -78,8 +86,10 @@ export class CompanyController extends BaseController<
     description: 'Company found',
   })
   @ApiResponse({ status: 404, description: 'Company not found' })
-  findByUuid(@Param('uuid') uuid: string) {
-    return this.service.findByUuid(uuid);
+  async findByUuid(@Request() req: any, @Param('uuid') uuid: string) {
+    const company = await this.service.findByUuid(uuid);
+    this.ensureCompanyAccess(req, company.id);
+    return company;
   }
 
   @Get('active')
@@ -103,7 +113,20 @@ export class CompanyController extends BaseController<
       },
     },
   })
-  findActive() {
-    return this.service.findActive();
+  async findActive(@Request() req: any) {
+    if (req.user?.isSuperAdmin) {
+      return this.service.findActive();
+    }
+    const ownCompany = await this.service.findOne(req.user.companyId);
+    return ownCompany.isActive ? [ownCompany] : [];
+  }
+
+  private ensureCompanyAccess(req: any, companyId: number) {
+    if (req.user?.isSuperAdmin) {
+      return;
+    }
+    if (Number(req.user?.companyId) !== Number(companyId)) {
+      throw new ForbiddenException('Cross-company access denied');
+    }
   }
 }

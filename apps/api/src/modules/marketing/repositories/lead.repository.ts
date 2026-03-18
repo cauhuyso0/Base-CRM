@@ -10,13 +10,16 @@ export class LeadRepository extends BaseRepository<
   CreateLeadDto,
   UpdateLeadDto
 > {
+  constructor(protected readonly prisma: PrismaService) {
+    super(prisma);
+  }
+
   protected get model() {
     return this.prisma.lead;
   }
 
   protected get include() {
     return {
-      campaign: true,
       activities: true,
       tasks: true,
       documents: true,

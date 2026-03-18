@@ -6,11 +6,9 @@ import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { CompanyModule } from './modules/company/company.module';
 import { BranchModule } from './modules/branch/branch.module';
-import { CustomerModule } from './modules/customer/customer.module';
-import { SalesModule } from './modules/sales/sales.module';
-import { MarketingModule } from './modules/marketing/marketing.module';
-import { ServiceModule } from './modules/service/service.module';
+import { RestaurantModule } from './modules/restaurant/restaurant.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
+import { PermissionGuard } from './common/guards/permission.guard';
 
 @Module({
   imports: [
@@ -18,10 +16,7 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
     AuthModule,
     CompanyModule,
     BranchModule,
-    CustomerModule,
-    SalesModule,
-    MarketingModule,
-    ServiceModule,
+    RestaurantModule,
   ],
   controllers: [AppController],
   providers: [
@@ -29,6 +24,10 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: PermissionGuard,
     },
   ],
 })

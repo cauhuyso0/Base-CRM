@@ -29,6 +29,7 @@ export class CompanyRepository extends BaseRepository<
 
   protected get select() {
     return {
+      id: true,
       uuid: true,
       code: true,
       name: true,

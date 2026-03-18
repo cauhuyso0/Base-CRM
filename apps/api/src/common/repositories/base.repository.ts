@@ -3,7 +3,9 @@ import { IRepository } from '../interfaces/repository.interface';
 
 // Type definitions for filters
 export interface BaseFilterOptions {
+  id?: number;
   type?: string;
+  companyId?: number;
   companyUuid?: string;
   isActive?: boolean;
   isDeleted?: boolean;
@@ -237,9 +239,15 @@ export abstract class BaseRepository<
     if (filters.status !== undefined) {
       where.status = filters.status;
     }
+    if (filters.id !== undefined) {
+      where.id = Number(filters.id);
+    }
 
     if (filters.companyUuid !== undefined) {
       where.companyUuid = filters.companyUuid;
+    }
+    if (filters.companyId !== undefined) {
+      where.companyId = Number(filters.companyId);
     }
 
     if (filters.type !== undefined) {

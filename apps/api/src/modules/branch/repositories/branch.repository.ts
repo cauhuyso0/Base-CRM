@@ -10,6 +10,10 @@ export class BranchRepository extends BaseRepository<
   CreateBranchDto,
   UpdateBranchDto
 > {
+  constructor(protected readonly prisma: PrismaService) {
+    super(prisma);
+  }
+
   protected get model() {
     return this.prisma.branch;
   }

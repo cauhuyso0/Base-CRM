@@ -5,6 +5,7 @@ import { CreateCustomerDto, UpdateCustomerDto } from './dto/customer.dto';
 import { Customer } from '@prisma/client';
 import { ListCustomer } from '@base-crm/shared';
 import { BaseFilterOptions } from 'src/common/repositories/base.repository';
+import { CompanyService } from '../company/company.service';
 
 @Injectable()
 export class CustomerService extends BaseService<
@@ -12,8 +13,20 @@ export class CustomerService extends BaseService<
   CreateCustomerDto,
   UpdateCustomerDto
 > {
-  constructor(protected readonly repository: CustomerRepository) {
+  constructor(
+    protected readonly repository: CustomerRepository,
+    private readonly companyService: CompanyService,
+  ) {
     super(repository);
+  }
+
+  override async create(data: CreateCustomerDto): Promise<Customer> {
+    const company = await this.companyService.findByUuid(data.company_uuid);
+
+    return this.repository.create({
+      ...data,
+      companyId: company.id,
+    } as unknown as CreateCustomerDto);
   }
 
   async findByEmail(email: string, companyId: number) {

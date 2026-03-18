@@ -3,7 +3,7 @@
  */
 
 export interface CreateCustomerDto {
-  companyId: number;
+  company_uuid: string;
   code: string;
   name: string;
   type?: string;
@@ -54,6 +54,7 @@ export interface UpdateCustomerDto {
 }
 
 export interface ListCustomer {
+  id: number;
   code: string;
   uuid: string;
   name: string;

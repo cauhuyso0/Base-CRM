@@ -102,34 +102,40 @@ function Dashboard() {
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <StatCard
-            title="Tổng khách hàng"
-            value={stats.customers.total}
-            subtitle={`${stats.customers.active} đang hoạt động`}
-            icon="👥"
+            title="Tổng đơn"
+            value={stats.operations.totalOrders}
+            subtitle={`${stats.operations.paidOrders} đã thanh toán`}
+            icon="🧾"
             color="blue"
           />
           <StatCard
-            title="Cơ hội bán hàng"
-            value={stats.opportunities.total}
-            subtitle={`${stats.opportunities.active} đang mở, ${stats.opportunities.won} đã thắng`}
-            icon="🎯"
+            title="Đơn mới"
+            value={stats.operations.newOrders}
+            subtitle={`${stats.operations.preparingOrders} đang chuẩn bị`}
+            icon="🛎️"
             color="green"
           />
           <StatCard
-            title="Đơn hàng"
-            value={stats.salesOrders.total}
-            subtitle={`Doanh thu: ${new Intl.NumberFormat('vi-VN', {
+            title="Doanh thu"
+            value={new Intl.NumberFormat('vi-VN', {
               style: 'currency',
               currency: 'VND',
-            }).format(Number(stats.salesOrders.revenue))}`}
-            icon="🛒"
+            }).format(Number(stats.finance.income))}
+            subtitle={`Lợi nhuận: ${new Intl.NumberFormat('vi-VN', {
+              style: 'currency',
+              currency: 'VND',
+            }).format(Number(stats.finance.profit))}`}
+            icon="💸"
             color="purple"
           />
           <StatCard
-            title="Cases"
-            value={stats.cases.total}
-            subtitle={`${stats.cases.open} đang mở`}
-            icon="📋"
+            title="Thuế phải nộp"
+            value={new Intl.NumberFormat('vi-VN', {
+              style: 'currency',
+              currency: 'VND',
+            }).format(Number(stats.tax.payable))}
+            subtitle={`Đầu ra: ${new Intl.NumberFormat('vi-VN').format(Number(stats.tax.output))} | Đầu vào: ${new Intl.NumberFormat('vi-VN').format(Number(stats.tax.input))}`}
+            icon="🧾"
             color="yellow"
           />
         </div>
@@ -137,11 +143,18 @@ function Dashboard() {
         {/* Additional Stats */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <StatCard
-            title="Tickets"
-            value={stats.tickets.total}
-            subtitle={`${stats.tickets.open} đang mở`}
-            icon="🎫"
+            title="Tổng bàn"
+            value={stats.operations.totalTables}
+            subtitle={`${stats.operations.totalMenuItems} món`}
+            icon="🍽️"
             color="red"
+          />
+          <StatCard
+            title="Đã phục vụ"
+            value={stats.operations.servedOrders}
+            subtitle="Đơn ở trạng thái SERVED"
+            icon="✅"
+            color="green"
           />
         </div>
       </div>

@@ -67,6 +67,16 @@ export class AuthService {
 
   async login(loginDto: LoginDto) {
     const user = await this.validateUser(loginDto.username, loginDto.password);
+    const roleCodes = user.userRoles.map((ur) => ur.role.code);
+    const permissions = Array.from(
+      new Set(
+        user.userRoles.flatMap((ur) =>
+          ur.role.rolePermissions.map((rp) => rp.permission.code),
+        ),
+      ),
+    );
+    const isSuperAdmin = roleCodes.includes('SUPER_ADMIN');
+
     const payload = {
       sub: user.id,
       username: user.username,
@@ -74,6 +84,9 @@ export class AuthService {
       companyId: user.companyId,
       branchId: user.branchId,
       roles: user.userRoles.map((ur) => ur.role.name),
+      roleCodes,
+      permissions,
+      isSuperAdmin,
     };
 
     return {
@@ -98,7 +111,10 @@ export class AuthService {
         roles: user.userRoles.map((ur) => ({
           id: ur.role.id,
           name: ur.role.name,
+          code: ur.role.code,
         })),
+        permissions,
+        isSuperAdmin,
       },
     };
   }
@@ -136,6 +152,22 @@ export class AuthService {
         branch: true,
       },
     });
+
+    const employeeRole = await this.prisma.role.findFirst({
+      where: {
+        companyId: registerDto.companyId,
+        code: 'EMPLOYEE',
+        isDeleted: false,
+      },
+    });
+    if (employeeRole) {
+      await this.prisma.userRole.create({
+        data: {
+          userId: user.id,
+          roleId: employeeRole.id,
+        },
+      });
+    }
 
     const { password: _, ...result } = user;
     return result;

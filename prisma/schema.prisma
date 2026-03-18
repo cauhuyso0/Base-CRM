@@ -37,18 +37,26 @@ model Company {
   updatedBy String?  @map("updated_by") @db.VarChar(100) // Người cập nhật
 
   // Relations
-  branches      Branch[]
-  users         User[]
-  customers     Customer[]
-  vendors       Vendor[]
-  products      Product[]
-  accounts      Account[]
-  roles         Role[]
-  opportunities Opportunity[]
-  salesOrders   SalesOrder[]
-  campaigns     Campaign[]
-  cases         Case[]
-  documents     Document[]
+  branches         Branch[]
+  users            User[]
+  customers        Customer[]
+  vendors          Vendor[]
+  products         Product[]
+  accounts         Account[]
+  roles            Role[]
+  opportunities    Opportunity[]
+  salesOrders      SalesOrder[]
+  campaigns        Campaign[]
+  cases            Case[]
+  documents        Document[]
+  restaurantTables RestaurantTable[]
+  menuItems        MenuItem[]
+  restaurantOrders RestaurantOrder[]
+  expenses         Expense[]
+  taxRules         TaxRule[]
+  cashFlowEntries  CashFlowEntry[]
+  taxLedgerEntries TaxLedgerEntry[]
+  businessSetting  CompanyBusinessSetting?
 
   @@index([code])
   @@index([uuid])
@@ -1006,4 +1014,254 @@ model Account {
   @@index([type])
   @@index([isDeleted])
   @@map("accounts")
+}
+
+// ============================================
+// F&B MODULE: RESTAURANT QR ORDERING + FINANCE
+// ============================================
+
+model RestaurantTable {
+  id        Int      @id @default(autoincrement()) @map("id")
+  uuid      String   @unique @default(uuid()) @map("uuid")
+  companyId Int      @map("company_id")
+  code      String   @map("code") @db.VarChar(50)
+  name      String   @map("name") @db.VarChar(100)
+  area      String?  @map("area") @db.VarChar(100)
+  qrToken   String   @unique @default(uuid()) @map("qr_token") @db.VarChar(100)
+  seats     Int      @default(4) @map("seats")
+  status    String   @default("AVAILABLE") @map("status") @db.VarChar(30)
+  isActive  Boolean  @default(true) @map("is_active")
+  isDeleted Boolean  @default(false) @map("is_deleted")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  company Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  orders  RestaurantOrder[]
+
+  @@unique([companyId, code])
+  @@index([companyId])
+  @@index([qrToken])
+  @@index([status])
+  @@index([isDeleted])
+  @@map("restaurant_tables")
+}
+
+model MenuItem {
+  id          Int      @id @default(autoincrement()) @map("id")
+  uuid        String   @unique @default(uuid()) @map("uuid")
+  companyId   Int      @map("company_id")
+  code        String   @map("code") @db.VarChar(50)
+  name        String   @map("name") @db.VarChar(255)
+  category    String?  @map("category") @db.VarChar(100)
+  imageUrl    String?  @map("image_url") @db.VarChar(500)
+  description String?  @map("description") @db.Text
+  price       Decimal  @map("price") @db.Decimal(18, 2)
+  vatRate     Decimal  @default(8) @map("vat_rate") @db.Decimal(5, 2)
+  isAvailable Boolean  @default(true) @map("is_available")
+  isDeleted   Boolean  @default(false) @map("is_deleted")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  company    Company               @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  orderItems RestaurantOrderItem[]
+
+  @@unique([companyId, code])
+  @@index([companyId])
+  @@index([name])
+  @@index([isAvailable])
+  @@index([isDeleted])
+  @@map("menu_items")
+}
+
+model RestaurantOrder {
+  id            Int       @id @default(autoincrement()) @map("id")
+  uuid          String    @unique @default(uuid()) @map("uuid")
+  companyId     Int       @map("company_id")
+  tableId       Int       @map("table_id")
+  orderNumber   String    @map("order_number") @db.VarChar(50)
+  customerName  String?   @map("customer_name") @db.VarChar(100)
+  note          String?   @map("note") @db.Text
+  status        String    @default("NEW") @map("status") @db.VarChar(30)
+  subtotal      Decimal   @default(0) @map("subtotal") @db.Decimal(18, 2)
+  taxAmount     Decimal   @default(0) @map("tax_amount") @db.Decimal(18, 2)
+  serviceCharge Decimal   @default(0) @map("service_charge") @db.Decimal(18, 2)
+  discount      Decimal   @default(0) @map("discount") @db.Decimal(18, 2)
+  totalAmount   Decimal   @default(0) @map("total_amount") @db.Decimal(18, 2)
+  orderedAt     DateTime  @default(now()) @map("ordered_at")
+  paidAt        DateTime? @map("paid_at")
+  isDeleted     Boolean   @default(false) @map("is_deleted")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  company       Company               @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  table         RestaurantTable       @relation(fields: [tableId], references: [id], onDelete: Restrict)
+  items         RestaurantOrderItem[]
+  notifications OrderNotification[]
+
+  @@unique([companyId, orderNumber])
+  @@index([companyId, status])
+  @@index([tableId])
+  @@index([orderedAt])
+  @@index([isDeleted])
+  @@map("restaurant_orders")
+}
+
+model RestaurantOrderItem {
+  id         Int      @id @default(autoincrement()) @map("id")
+  orderId    Int      @map("order_id")
+  menuItemId Int?     @map("menu_item_id")
+  itemName   String   @map("item_name") @db.VarChar(255)
+  quantity   Decimal  @map("quantity") @db.Decimal(18, 3)
+  unitPrice  Decimal  @map("unit_price") @db.Decimal(18, 2)
+  vatRate    Decimal  @default(8) @map("vat_rate") @db.Decimal(5, 2)
+  taxAmount  Decimal  @default(0) @map("tax_amount") @db.Decimal(18, 2)
+  lineTotal  Decimal  @default(0) @map("line_total") @db.Decimal(18, 2)
+  note       String?  @map("note") @db.Text
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  order    RestaurantOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  menuItem MenuItem?       @relation(fields: [menuItemId], references: [id], onDelete: SetNull)
+
+  @@index([orderId])
+  @@index([menuItemId])
+  @@map("restaurant_order_items")
+}
+
+model OrderNotification {
+  id        Int      @id @default(autoincrement()) @map("id")
+  orderId   Int      @map("order_id")
+  type      String   @default("NEW_ORDER") @map("type") @db.VarChar(50)
+  message   String   @map("message") @db.VarChar(255)
+  isRead    Boolean  @default(false) @map("is_read")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  order RestaurantOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId, isRead])
+  @@map("order_notifications")
+}
+
+model Expense {
+  id            Int      @id @default(autoincrement()) @map("id")
+  uuid          String   @unique @default(uuid()) @map("uuid")
+  companyId     Int      @map("company_id")
+  referenceCode String   @map("reference_code") @db.VarChar(50)
+  type          String   @map("type") @db.VarChar(50)
+  description   String?  @map("description") @db.Text
+  amount        Decimal  @map("amount") @db.Decimal(18, 2)
+  vatRate       Decimal  @default(0) @map("vat_rate") @db.Decimal(5, 2)
+  taxAmount     Decimal  @default(0) @map("tax_amount") @db.Decimal(18, 2)
+  totalAmount   Decimal  @default(0) @map("total_amount") @db.Decimal(18, 2)
+  expenseDate   DateTime @map("expense_date")
+  paymentMethod String?  @map("payment_method") @db.VarChar(50)
+  isDeleted     Boolean  @default(false) @map("is_deleted")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, referenceCode])
+  @@index([companyId, expenseDate])
+  @@index([type])
+  @@index([isDeleted])
+  @@map("expenses")
+}
+
+model TaxRule {
+  id            Int       @id @default(autoincrement()) @map("id")
+  uuid          String    @unique @default(uuid()) @map("uuid")
+  companyId     Int       @map("company_id")
+  code          String    @map("code") @db.VarChar(50)
+  name          String    @map("name") @db.VarChar(255)
+  vatRate       Decimal   @map("vat_rate") @db.Decimal(5, 2)
+  effectiveFrom DateTime  @map("effective_from")
+  effectiveTo   DateTime? @map("effective_to")
+  isDefault     Boolean   @default(false) @map("is_default")
+  isActive      Boolean   @default(true) @map("is_active")
+  isDeleted     Boolean   @default(false) @map("is_deleted")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, code])
+  @@index([companyId, isDefault])
+  @@index([isActive, isDeleted])
+  @@map("tax_rules")
+}
+
+model CashFlowEntry {
+  id               Int      @id @default(autoincrement()) @map("id")
+  uuid             String   @unique @default(uuid()) @map("uuid")
+  companyId        Int      @map("company_id")
+  direction        String   @map("direction") @db.VarChar(20) // INCOME | EXPENSE
+  sourceModule     String   @map("source_module") @db.VarChar(50) // restaurant, grocery, cafe...
+  sourceType       String   @map("source_type") @db.VarChar(50) // order, expense, refund...
+  sourceId         Int?     @map("source_id")
+  businessCategory String?  @map("business_category") @db.VarChar(50) // fnb, grocery...
+  category         String   @map("category") @db.VarChar(50)
+  amountExclTax    Decimal  @map("amount_excl_tax") @db.Decimal(18, 2)
+  taxAmount        Decimal  @default(0) @map("tax_amount") @db.Decimal(18, 2)
+  amountInclTax    Decimal  @map("amount_incl_tax") @db.Decimal(18, 2)
+  paymentMethod    String?  @map("payment_method") @db.VarChar(50)
+  note             String?  @map("note") @db.Text
+  occurredAt       DateTime @map("occurred_at")
+  isDeleted        Boolean  @default(false) @map("is_deleted")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, occurredAt])
+  @@index([companyId, direction])
+  @@index([sourceModule, sourceType, sourceId])
+  @@index([isDeleted])
+  @@map("cash_flow_entries")
+}
+
+model TaxLedgerEntry {
+  id               Int      @id @default(autoincrement()) @map("id")
+  uuid             String   @unique @default(uuid()) @map("uuid")
+  companyId        Int      @map("company_id")
+  direction        String   @map("direction") @db.VarChar(20) // OUTPUT | INPUT
+  sourceModule     String   @map("source_module") @db.VarChar(50)
+  sourceType       String   @map("source_type") @db.VarChar(50)
+  sourceId         Int?     @map("source_id")
+  businessCategory String?  @map("business_category") @db.VarChar(50)
+  vatRate          Decimal  @map("vat_rate") @db.Decimal(5, 2)
+  taxableAmount    Decimal  @map("taxable_amount") @db.Decimal(18, 2)
+  taxAmount        Decimal  @map("tax_amount") @db.Decimal(18, 2)
+  occurredAt       DateTime @map("occurred_at")
+  note             String?  @map("note") @db.Text
+  isDeleted        Boolean  @default(false) @map("is_deleted")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, occurredAt])
+  @@index([companyId, direction])
+  @@index([sourceModule, sourceType, sourceId])
+  @@index([isDeleted])
+  @@map("tax_ledger_entries")
+}
+
+model CompanyBusinessSetting {
+  id                Int      @id @default(autoincrement()) @map("id")
+  companyId         Int      @unique @map("company_id")
+  businessCategory  String   @default("fnb") @map("business_category") @db.VarChar(50)
+  displayName       String?  @map("display_name") @db.VarChar(255)
+  currency          String   @default("VND") @map("currency") @db.VarChar(10)
+  taxMethod         String   @default("DEDUCTION") @map("tax_method") @db.VarChar(30) // DEDUCTION | DIRECT
+  defaultVatRate    Decimal  @default(8) @map("default_vat_rate") @db.Decimal(5, 2)
+  serviceChargeRate Decimal  @default(0) @map("service_charge_rate") @db.Decimal(5, 2)
+  isDeleted         Boolean  @default(false) @map("is_deleted")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([businessCategory, isDeleted])
+  @@map("company_business_settings")
 }

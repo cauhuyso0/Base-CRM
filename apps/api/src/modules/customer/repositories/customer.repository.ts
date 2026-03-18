@@ -31,6 +31,7 @@ export class CustomerRepository extends BaseRepository<
 
   protected get select() {
     return {
+      id: true,
       code: true,
       uuid: true,
       name: true,

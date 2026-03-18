@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { BaseRepository } from '../../../common/repositories/base.repository';
+import { PrismaService } from '../../../prisma/prisma.service';
 import { Case } from '@prisma/client';
 import { CreateCaseDto, UpdateCaseDto } from '../dto/case.dto';
 
@@ -9,6 +10,10 @@ export class CaseRepository extends BaseRepository<
   CreateCaseDto,
   UpdateCaseDto
 > {
+  constructor(protected readonly prisma: PrismaService) {
+    super(prisma);
+  }
+
   protected get model() {
     return this.prisma.case;
   }
@@ -25,9 +30,9 @@ export class CaseRepository extends BaseRepository<
 
   protected buildSearchClause(search: string): any[] {
     return [
-      { title: { contains: search, mode: 'insensitive' } },
+      { subject: { contains: search, mode: 'insensitive' } },
       { description: { contains: search, mode: 'insensitive' } },
-      { caseNumber: { contains: search, mode: 'insensitive' } },
+      { code: { contains: search, mode: 'insensitive' } },
     ];
   }
 

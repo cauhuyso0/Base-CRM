@@ -8,6 +8,7 @@ import {
   Delete,
   Query,
   ParseIntPipe,
+  Request,
 } from '@nestjs/common';
 import { LeadService } from './lead.service';
 import { CreateLeadDto, UpdateLeadDto } from './dto/lead.dto';
@@ -17,16 +18,23 @@ export class LeadController {
   constructor(private readonly leadService: LeadService) {}
 
   @Post()
-  create(@Body() createLeadDto: CreateLeadDto) {
+  create(@Request() req: any, @Body() createLeadDto: CreateLeadDto) {
+    const payload = createLeadDto as unknown as Record<string, unknown>;
+    if (!req.user?.isSuperAdmin && payload.companyId === undefined) {
+      payload.companyId = req.user.companyId;
+    }
     return this.leadService.create(createLeadDto);
   }
 
   @Get()
-  findAll(
-    @Query('companyId', ParseIntPipe) companyId: number,
-    @Query() filters: any,
-  ) {
-    return this.leadService.findAll(companyId);
+  findAll(@Request() req: any, @Query() filters: any) {
+    const companyId =
+      req.user?.isSuperAdmin
+        ? filters.companyId !== undefined
+          ? Number(filters.companyId)
+          : undefined
+        : Number(req.user.companyId);
+    return this.leadService.findAll(companyId, filters);
   }
 
   @Get(':id')

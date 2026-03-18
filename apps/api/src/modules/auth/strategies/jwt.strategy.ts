@@ -41,6 +41,15 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       throw new UnauthorizedException('User not found or inactive');
     }
 
+    const permissions = Array.from(
+      new Set(
+        user.userRoles.flatMap((ur) =>
+          ur.role.rolePermissions.map((rp) => rp.permission.code),
+        ),
+      ),
+    );
+    const roleCodes = user.userRoles.map((ur) => ur.role.code);
+
     return {
       id: user.id,
       uuid: user.uuid,
@@ -51,6 +60,9 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       company: user.company,
       branch: user.branch,
       roles: user.userRoles.map((ur) => ur.role),
+      roleCodes,
+      permissions,
+      isSuperAdmin: roleCodes.includes('SUPER_ADMIN'),
     };
   }
 }

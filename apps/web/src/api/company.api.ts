@@ -12,4 +12,15 @@ export const companyApi = {
     const response = await apiClient.get('/companies', { params });
     return response.data;
   },
+  create: async (data: Record<string, unknown>): Promise<Company> => {
+    const response = await apiClient.post('/companies', data);
+    return response.data;
+  },
+  update: async (id: number, data: Record<string, unknown>): Promise<Company> => {
+    const response = await apiClient.patch(`/companies/${id}`, data);
+    return response.data;
+  },
+  delete: async (id: number): Promise<void> => {
+    await apiClient.delete(`/companies/${id}`);
+  },
 };

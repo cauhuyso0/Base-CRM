@@ -5,15 +5,20 @@ import {
   IsInt,
   IsEmail,
   IsNumber,
+  IsUUID,
   Min,
   Max,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateCustomerDto {
-  @ApiProperty({ description: 'Company ID', example: 1 })
-  @IsInt()
-  companyId: number;
+  @ApiProperty({
+    description: 'Company UUID',
+    example: '550e8400-e29b-41d4-a716-446655440000',
+  })
+  @IsString()
+  @IsUUID()
+  company_uuid: string;
 
   @ApiProperty({ description: 'Customer code', example: 'CUST001' })
   @IsString()

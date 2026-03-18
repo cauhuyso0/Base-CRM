@@ -18,8 +18,11 @@ export class LeadService extends BaseService<
     super(repository);
   }
 
-  async findAll(companyId: number) {
-    return this.repository.findByCompany(companyId);
+  async findAll(companyId?: number, filters?: any) {
+    if (companyId !== undefined && Number.isFinite(companyId)) {
+      return this.repository.findByCompany(companyId);
+    }
+    return this.repository.findAll(filters);
   }
 
   async findByCampaign(campaignId: number) {

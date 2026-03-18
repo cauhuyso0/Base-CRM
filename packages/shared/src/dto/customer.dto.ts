@@ -3,7 +3,7 @@
  */
 
 export interface CreateCustomerRequest {
-  companyId: number;
+  company_uuid: string;
   code: string;
   name: string;
   type?: string;

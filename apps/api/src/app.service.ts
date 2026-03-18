@@ -11,69 +11,81 @@ export class AppService {
 
   async getDashboardStats(companyId: number) {
     const [
-      totalCustomers,
-      totalOpportunities,
-      totalSalesOrders,
-      totalCases,
-      totalTickets,
-      activeOpportunities,
-      wonOpportunities,
-      totalRevenue,
+      totalTables,
+      totalMenuItems,
+      totalOrders,
+      newOrders,
+      preparingOrders,
+      servedOrders,
+      paidOrders,
+      incomeAgg,
+      expenseAgg,
+      taxOutputAgg,
+      taxInputAgg,
     ] = await Promise.all([
-      this.prisma.customer.count({
+      this.prisma.restaurantTable.count({
         where: { companyId, isDeleted: false },
       }),
-      this.prisma.opportunity.count({
+      this.prisma.menuItem.count({
         where: { companyId, isDeleted: false },
       }),
-      this.prisma.salesOrder.count({
+      this.prisma.restaurantOrder.count({
         where: { companyId, isDeleted: false },
       }),
-      this.prisma.case.count({
+      this.prisma.restaurantOrder.count({
+        where: { companyId, isDeleted: false, status: 'NEW' },
+      }),
+      this.prisma.restaurantOrder.count({
+        where: { companyId, isDeleted: false, status: 'PREPARING' },
+      }),
+      this.prisma.restaurantOrder.count({
+        where: { companyId, isDeleted: false, status: 'SERVED' },
+      }),
+      this.prisma.restaurantOrder.count({
+        where: { companyId, isDeleted: false, status: 'PAID' },
+      }),
+      this.prisma.cashFlowEntry.aggregate({
         where: { companyId, isDeleted: false },
+        _sum: { amountInclTax: true },
       }),
-      this.prisma.ticket.count({
-        where: { isDeleted: false },
+      this.prisma.cashFlowEntry.aggregate({
+        where: { companyId, isDeleted: false, direction: 'EXPENSE' },
+        _sum: { amountInclTax: true },
       }),
-      this.prisma.opportunity.count({
-        where: { companyId, status: 'OPEN', isDeleted: false },
+      this.prisma.taxLedgerEntry.aggregate({
+        where: { companyId, isDeleted: false, direction: 'OUTPUT' },
+        _sum: { taxAmount: true },
       }),
-      this.prisma.opportunity.count({
-        where: { companyId, status: 'WON', isDeleted: false },
-      }),
-      this.prisma.salesOrder.aggregate({
-        where: { companyId, isDeleted: false },
-        _sum: { totalAmount: true },
+      this.prisma.taxLedgerEntry.aggregate({
+        where: { companyId, isDeleted: false, direction: 'INPUT' },
+        _sum: { taxAmount: true },
       }),
     ]);
 
+    const income = Number(incomeAgg._sum.amountInclTax || 0);
+    const expense = Number(expenseAgg._sum.amountInclTax || 0);
+    const taxOutput = Number(taxOutputAgg._sum.taxAmount || 0);
+    const taxInput = Number(taxInputAgg._sum.taxAmount || 0);
+
     return {
-      customers: {
-        total: totalCustomers,
-        active: await this.prisma.customer.count({
-          where: { companyId, status: 'ACTIVE', isDeleted: false },
-        }),
+      operations: {
+        totalTables,
+        totalMenuItems,
+        totalOrders,
+        newOrders,
+        preparingOrders,
+        servedOrders,
+        paidOrders,
       },
-      opportunities: {
-        total: totalOpportunities,
-        active: activeOpportunities,
-        won: wonOpportunities,
+      finance: {
+        income,
+        expense,
+        profit: income - expense,
       },
-      salesOrders: {
-        total: totalSalesOrders,
-        revenue: totalRevenue._sum.totalAmount || 0,
-      },
-      cases: {
-        total: totalCases,
-        open: await this.prisma.case.count({
-          where: { companyId, status: 'NEW', isDeleted: false },
-        }),
-      },
-      tickets: {
-        total: totalTickets,
-        open: await this.prisma.ticket.count({
-          where: { status: 'OPEN', isDeleted: false },
-        }),
+      tax: {
+        output: taxOutput,
+        input: taxInput,
+        payable: taxOutput - taxInput,
       },
     };
   }

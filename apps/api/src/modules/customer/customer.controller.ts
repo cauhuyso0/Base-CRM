@@ -1,4 +1,4 @@
-import { Controller, Get, Query, ParseIntPipe } from '@nestjs/common';
+import { Controller, Get, Query, ParseIntPipe, Request } from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
@@ -61,11 +61,13 @@ export class CustomerController extends BaseController<
   // Override findAll to return ListCustomer[] instead of Customer[]
   // Using type assertion to satisfy base class signature
   override findAll(
+    @Request() req: any,
     @Query() rawFilters: Record<string, unknown>,
   ): Promise<Customer[]> {
     // Parse query parameters to correct types
     const filters: BaseFilterOptions = {
       ...rawFilters,
+      companyId: req.user?.isSuperAdmin ? rawFilters.companyId as number | undefined : req.user?.companyId,
       // Parse boolean values
       isActive:
         rawFilters.isActive !== undefined

@@ -9,6 +9,7 @@ import {
   HttpCode,
   HttpStatus,
   ParseIntPipe,
+  Request,
 } from '@nestjs/common';
 import {
   ApiOperation,
@@ -23,6 +24,29 @@ export abstract class BaseController<T, CreateDto, UpdateDto> {
   constructor(
     protected readonly service: IBaseService<T, CreateDto, UpdateDto>,
   ) {}
+
+  private applyCompanyScope(req: any, filters: Record<string, unknown>) {
+    if (req?.user?.isSuperAdmin) {
+      return filters;
+    }
+    const scoped = { ...filters };
+    const routeHint = `${String(req?.baseUrl || '')} ${String(req?.originalUrl || '')}`;
+    const isCompanyResource = routeHint.includes('/companies');
+    if (isCompanyResource) {
+      delete scoped.companyId;
+      scoped.id = req.user.companyId;
+      return scoped;
+    }
+    if (scoped.companyId !== undefined) {
+      const requested = Number(scoped.companyId);
+      if (Number.isFinite(requested) && requested !== Number(req.user.companyId)) {
+        scoped.companyId = req.user.companyId;
+      }
+    } else {
+      scoped.companyId = req.user.companyId;
+    }
+    return scoped;
+  }
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
@@ -47,7 +71,14 @@ export abstract class BaseController<T, CreateDto, UpdateDto> {
     },
   })
   @ApiResponse({ status: 400, description: 'Validation error' })
-  create(@Body() createDto: CreateDto): Promise<T> {
+  create(@Request() req: any, @Body() createDto: CreateDto): Promise<T> {
+    if (req?.user?.isSuperAdmin) {
+      return this.service.create(createDto);
+    }
+    const payload = createDto as Record<string, unknown>;
+    if (payload.companyId === undefined) {
+      payload.companyId = req.user.companyId;
+    }
     return this.service.create(createDto);
   }
 
@@ -108,8 +139,8 @@ export abstract class BaseController<T, CreateDto, UpdateDto> {
       },
     },
   })
-  findAll(@Query() filters: any): Promise<T[]> {
-    return this.service.findAll(filters);
+  findAll(@Request() req: any, @Query() filters: any): Promise<T[]> {
+    return this.service.findAll(this.applyCompanyScope(req, filters));
   }
 
   @Get('count')
@@ -146,8 +177,8 @@ export abstract class BaseController<T, CreateDto, UpdateDto> {
       example: 100,
     },
   })
-  count(@Query() filters: any): Promise<number> {
-    return this.service.count(filters);
+  count(@Request() req: any, @Query() filters: any): Promise<number> {
+    return this.service.count(this.applyCompanyScope(req, filters));
   }
 
   @Get('find-one')
@@ -171,8 +202,8 @@ export abstract class BaseController<T, CreateDto, UpdateDto> {
     },
   })
   @ApiResponse({ status: 404, description: 'Record not found' })
-  findOneBy(@Query() where: Record<string, unknown>): Promise<T> {
-    return this.service.findOneBy(where);
+  findOneBy(@Request() req: any, @Query() where: Record<string, unknown>): Promise<T> {
+    return this.service.findOneBy(this.applyCompanyScope(req, where));
   }
 
   @Get(':id')

@@ -13,6 +13,10 @@ export class OpportunityRepository extends BaseRepository<
   CreateOpportunityDto,
   UpdateOpportunityDto
 > {
+  constructor(protected readonly prisma: PrismaService) {
+    super(prisma);
+  }
+
   protected get model() {
     return this.prisma.opportunity;
   }

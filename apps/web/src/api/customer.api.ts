@@ -3,6 +3,7 @@ import {
   CreateCustomerRequest,
   UpdateCustomerRequest,
   Customer,
+  ListCustomer,
 } from '@base-crm/shared';
 
 export const customerApi = {
@@ -14,7 +15,7 @@ export const customerApi = {
     take?: number;
     orderBy?: string;
     status?: string;
-  }): Promise<Customer[]> => {
+  }): Promise<ListCustomer[]> => {
     const response = await apiClient.get('/customers', { params });
     return response.data;
   },

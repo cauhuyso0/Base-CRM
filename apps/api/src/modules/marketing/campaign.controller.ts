@@ -8,6 +8,7 @@ import {
   Delete,
   Query,
   ParseIntPipe,
+  Request,
 } from '@nestjs/common';
 import { CampaignService } from './campaign.service';
 import { CreateCampaignDto, UpdateCampaignDto } from './dto/campaign.dto';
@@ -17,15 +18,22 @@ export class CampaignController {
   constructor(private readonly campaignService: CampaignService) {}
 
   @Post()
-  create(@Body() createCampaignDto: CreateCampaignDto) {
+  create(@Request() req: any, @Body() createCampaignDto: CreateCampaignDto) {
+    const payload = createCampaignDto as unknown as Record<string, unknown>;
+    if (!req.user?.isSuperAdmin && payload.companyId === undefined) {
+      payload.companyId = req.user.companyId;
+    }
     return this.campaignService.create(createCampaignDto);
   }
 
   @Get()
-  findAll(
-    @Query('companyId', ParseIntPipe) companyId: number,
-    @Query() filters: any,
-  ) {
+  findAll(@Request() req: any, @Query() filters: any) {
+    const companyId =
+      req.user?.isSuperAdmin
+        ? filters.companyId !== undefined
+          ? Number(filters.companyId)
+          : undefined
+        : Number(req.user.companyId);
     return this.campaignService.findAll(companyId, filters);
   }
 
