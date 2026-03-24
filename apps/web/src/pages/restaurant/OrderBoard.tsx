@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Layout from '../../components/layout/Layout';
 import { RestaurantOrder, restaurantApi } from '../../api/restaurant.api';
+import TableManager from '../../components/restaurant/TableManager';
 
 const STATUS_ORDER: RestaurantOrder['status'][] = [
   'NEW',
@@ -22,6 +23,7 @@ function OrderBoard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('');
+  const [tableRefreshSignal, setTableRefreshSignal] = useState(0);
 
   const load = async () => {
     try {
@@ -66,6 +68,7 @@ function OrderBoard() {
     if (!next) return;
     try {
       await restaurantApi.updateOrderStatus(order.id, next);
+      setTableRefreshSignal((prev) => prev + 1);
       await load();
     } catch (err: any) {
       setError(err.response?.data?.message || err.message || 'Không thể cập nhật trạng thái đơn');
@@ -75,6 +78,7 @@ function OrderBoard() {
   return (
     <Layout>
       <div className="space-y-6">
+
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Nhận Order</h1>
@@ -143,6 +147,22 @@ function OrderBoard() {
                         <p className="text-sm text-gray-600 dark:text-gray-300">
                           {order.items.length} món - Tổng: {Number(order.totalAmount).toLocaleString('vi-VN')} VND
                         </p>
+                        <div className="rounded-md bg-gray-50 dark:bg-gray-800/50 px-2 py-2">
+                          <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                            Món cần chuẩn bị:
+                          </p>
+                          <ul className="space-y-1">
+                            {order.items.map((item) => (
+                              <li
+                                key={item.id}
+                                className="text-sm text-gray-700 dark:text-gray-200 flex items-start justify-between gap-2"
+                              >
+                                <span className="truncate">{item.itemName}</span>
+                                <span className="font-semibold whitespace-nowrap">x{Number(item.quantity)}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
                         <div className="text-xs text-gray-500 dark:text-gray-400">
                           {new Date(order.orderedAt).toLocaleString('vi-VN')}
                         </div>
@@ -163,6 +183,7 @@ function OrderBoard() {
             ))}
           </div>
         )}
+        <TableManager refreshSignal={tableRefreshSignal} />
       </div>
     </Layout>
   );

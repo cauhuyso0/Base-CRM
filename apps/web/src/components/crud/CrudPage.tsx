@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import Layout from '../layout/Layout';
 
+const EMPTY_QUICK_FILTERS: CrudQuickFilter[] = [];
+const EMPTY_QUICK_SORTS: CrudQuickSort[] = [];
+
 export type CrudFieldType =
   | 'text'
   | 'number'
@@ -88,8 +91,8 @@ function CrudPage({
   createFields,
   editFields,
   createDefaults,
-  quickFilters = [],
-  quickSorts = [],
+  quickFilters = EMPTY_QUICK_FILTERS,
+  quickSorts = EMPTY_QUICK_SORTS,
 }: CrudPageProps) {
   const [items, setItems] = useState<Record<string, unknown>[]>([]);
   const [loading, setLoading] = useState(true);

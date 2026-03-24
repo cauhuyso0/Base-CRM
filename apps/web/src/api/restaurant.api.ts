@@ -33,6 +33,17 @@ export type RestaurantOrderItem = {
   note?: string | null;
 };
 
+export type RestaurantTable = {
+  id: number;
+  code: string;
+  name: string;
+  area?: string | null;
+  seats?: number | null;
+  status: 'AVAILABLE' | 'OCCUPIED' | 'RESERVED' | string;
+  isActive?: boolean;
+  qrToken?: string;
+};
+
 export type RestaurantOrder = {
   id: number;
   orderNumber: string;
@@ -117,6 +128,19 @@ export const restaurantApi = {
   },
   getOrders: async (params?: { status?: string }): Promise<RestaurantOrder[]> => {
     const response = await apiClient.get('/restaurant/orders', { params });
+    return response.data;
+  },
+  getTables: async (): Promise<RestaurantTable[]> => {
+    const response = await apiClient.get('/restaurant/tables');
+    return response.data;
+  },
+  createTable: async (payload: {
+    code: string;
+    name: string;
+    area?: string;
+    seats?: number;
+  }): Promise<RestaurantTable> => {
+    const response = await apiClient.post('/restaurant/tables', payload);
     return response.data;
   },
   updateOrderStatus: async (

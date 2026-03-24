@@ -54,6 +54,9 @@ function QrOrder() {
   const filteredMenu = useMemo(() => {
     const keyword = search.trim().toLowerCase();
     return menuItems.filter((item) => {
+      if (item.isAvailable === false) {
+        return false;
+      }
       const matchCategory = activeCategory === 'all' || item.category === activeCategory;
       const matchSearch =
         !keyword ||
@@ -69,10 +72,12 @@ function QrOrder() {
 
   const selectedItems = useMemo(
     () =>
-      menuItems.filter((item) => (quantities[item.id] || 0) > 0).map((item) => ({
-        item,
-        qty: quantities[item.id],
-      })),
+      menuItems
+        .filter((item) => item.isAvailable !== false && (quantities[item.id] || 0) > 0)
+        .map((item) => ({
+          item,
+          qty: quantities[item.id],
+        })),
     [menuItems, quantities],
   );
 
@@ -99,6 +104,10 @@ function QrOrder() {
   }, [selectedItems]);
 
   const updateQty = (menuItemId: number, value: number) => {
+    const menuItem = menuItems.find((item) => item.id === menuItemId);
+    if (menuItem?.isAvailable === false) {
+      return;
+    }
     setQuantities((prev) => ({
       ...prev,
       [menuItemId]: value < 0 ? 0 : value,
@@ -284,6 +293,7 @@ function QrOrder() {
                               <button
                                 type="button"
                                 onClick={() => updateQty(item.id, qty - 1)}
+                                disabled={item.isAvailable === false}
                                 className="w-8 h-8 rounded bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700"
                               >
                                 -
@@ -293,11 +303,13 @@ function QrOrder() {
                                 min={0}
                                 value={qty}
                                 onChange={(e) => updateQty(item.id, Number(e.target.value))}
+                                disabled={item.isAvailable === false}
                                 className="w-14 text-center border rounded-md px-2 py-1 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100"
                               />
                               <button
                                 type="button"
                                 onClick={() => updateQty(item.id, qty + 1)}
+                                disabled={item.isAvailable === false}
                                 className="w-8 h-8 rounded bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700"
                               >
                                 +

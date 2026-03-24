@@ -293,10 +293,22 @@ export class RestaurantService {
       }
 
       if (status === 'PAID' || status === 'CANCELLED') {
-        await tx.restaurantTable.update({
-          where: { id: order.tableId },
-          data: { status: 'AVAILABLE' },
+        const openingOrders = await tx.restaurantOrder.count({
+          where: {
+            companyId,
+            tableId: order.tableId,
+            isDeleted: false,
+            status: {
+              notIn: ['PAID', 'CANCELLED'],
+            },
+          },
         });
+        if (openingOrders === 0) {
+          await tx.restaurantTable.update({
+            where: { id: order.tableId },
+            data: { status: 'AVAILABLE' },
+          });
+        }
       }
 
       return updated;
