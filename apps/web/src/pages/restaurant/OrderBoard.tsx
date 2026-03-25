@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Layout from '../../components/layout/Layout';
 import { RestaurantOrder, restaurantApi } from '../../api/restaurant.api';
 import TableManager from '../../components/restaurant/TableManager';
+import { getLocalTodayRangeISO } from '../../utils/todayRange';
 
 const STATUS_ORDER: RestaurantOrder['status'][] = [
   'NEW',
@@ -28,8 +29,11 @@ function OrderBoard() {
   const load = async () => {
     try {
       setError('');
+      const { from, to } = getLocalTodayRangeISO();
       const orderData = await restaurantApi.getOrders({
         status: statusFilter || undefined,
+        from,
+        to,
       });
       setOrders(orderData);
     } catch (err: any) {
@@ -83,7 +87,7 @@ function OrderBoard() {
           <div>
             <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Nhận Order</h1>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-              Cập nhật tự động mỗi 1 phút cho nhân viên phục vụ
+              Chỉ đơn trong ngày — cập nhật tự động mỗi 1 phút
             </p>
           </div>
           <div className="flex gap-2">
@@ -120,11 +124,11 @@ function OrderBoard() {
         ) : (
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
             {STATUS_ORDER.map((status) => (
-              <div key={status} className="bg-white dark:bg-gray-900 rounded-lg shadow p-4">
-                <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-3">
+              <div key={status} className="bg-white dark:bg-gray-900 rounded-lg shadow p-4 flex flex-col min-h-0 max-h-[calc(100vh-12rem)]">
+                <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-3 shrink-0">
                   {status} ({grouped[status]?.length || 0})
                 </h3>
-                <div className="space-y-3">
+                <div className="space-y-3 overflow-y-auto min-h-0 pr-1 flex-1">
                   {(grouped[status] || []).length === 0 ? (
                     <p className="text-sm text-gray-500 dark:text-gray-400">Không có đơn</p>
                   ) : (

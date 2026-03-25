@@ -24,6 +24,19 @@ export type CashFlowEntry = {
   note?: string | null;
 };
 
+export type RestaurantExpense = {
+  id: number;
+  referenceCode: string;
+  type: string;
+  description?: string | null;
+  amount: number | string;
+  vatRate: number | string;
+  taxAmount: number | string;
+  totalAmount: number | string;
+  expenseDate: string;
+  paymentMethod?: string | null;
+};
+
 export type RestaurantOrderItem = {
   id: number;
   itemName: string;
@@ -118,6 +131,22 @@ export const restaurantApi = {
     const response = await apiClient.get('/restaurant/cashflow', { params });
     return response.data;
   },
+  getExpenses: async (params?: { from?: string; to?: string }): Promise<RestaurantExpense[]> => {
+    const response = await apiClient.get('/restaurant/expenses', { params });
+    return response.data;
+  },
+  createExpense: async (payload: {
+    referenceCode: string;
+    type: string;
+    description?: string;
+    amount: number;
+    vatRate?: number;
+    expenseDate: string;
+    paymentMethod?: string;
+  }): Promise<RestaurantExpense> => {
+    const response = await apiClient.post('/restaurant/expenses', payload);
+    return response.data;
+  },
   getTaxSummary: async (params?: {
     from?: string;
     to?: string;
@@ -126,7 +155,11 @@ export const restaurantApi = {
     const response = await apiClient.get('/restaurant/tax-summary', { params });
     return response.data;
   },
-  getOrders: async (params?: { status?: string }): Promise<RestaurantOrder[]> => {
+  getOrders: async (params?: {
+    status?: string;
+    from?: string;
+    to?: string;
+  }): Promise<RestaurantOrder[]> => {
     const response = await apiClient.get('/restaurant/orders', { params });
     return response.data;
   },

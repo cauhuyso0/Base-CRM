@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { RestaurantOrder, RestaurantTable, restaurantApi } from '../../api/restaurant.api';
+import { getLocalTodayRangeISO } from '../../utils/todayRange';
 
 interface TableManagerProps {
   refreshSignal?: number;
@@ -107,7 +108,8 @@ function TableManager({ refreshSignal = 0 }: TableManagerProps) {
     setDetailLoading(true);
     try {
       setError('');
-      const orders = await restaurantApi.getOrders();
+      const { from, to } = getLocalTodayRangeISO();
+      const orders = await restaurantApi.getOrders({ from, to });
       const tableOrders = (Array.isArray(orders) ? orders : []).filter(
         (order) => order.table?.id === table.id,
       );

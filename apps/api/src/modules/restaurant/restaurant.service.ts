@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
   CreateIncomeDto,
@@ -10,6 +11,14 @@ import {
   UpdateMenuItemDto,
   UpsertBusinessSettingDto,
 } from './dto/restaurant.dto';
+
+/** Đơn đang chiếm bàn. Chỉ đếm whitelist này để tránh status lạ / sai format khiến bàn kẹt OCCUPIED. */
+const RESTAURANT_ORDER_OPEN_STATUSES = [
+  'NEW',
+  'CONFIRMED',
+  'PREPARING',
+  'SERVED',
+] as const;
 
 @Injectable()
 export class RestaurantService {
@@ -59,10 +68,33 @@ export class RestaurantService {
   }
 
   async listTables(companyId: number) {
-    return this.prisma.restaurantTable.findMany({
+    const tables = await this.prisma.restaurantTable.findMany({
       where: { companyId, isDeleted: false },
       orderBy: { createdAt: 'desc' },
     });
+
+    for (const table of tables) {
+      if (table.status !== 'OCCUPIED') {
+        continue;
+      }
+      const openCount = await this.prisma.restaurantOrder.count({
+        where: {
+          companyId,
+          tableId: table.id,
+          isDeleted: false,
+          status: { in: [...RESTAURANT_ORDER_OPEN_STATUSES] },
+        },
+      });
+      if (openCount === 0) {
+        await this.prisma.restaurantTable.update({
+          where: { id: table.id },
+          data: { status: 'AVAILABLE' },
+        });
+        table.status = 'AVAILABLE';
+      }
+    }
+
+    return tables;
   }
 
   async createTable(companyId: number, dto: CreateRestaurantTableDto) {
@@ -239,13 +271,21 @@ export class RestaurantService {
     });
   }
 
-  async listOrders(companyId: number, status?: string) {
+  async listOrders(companyId: number, status?: string, from?: string, to?: string) {
+    const where: Prisma.RestaurantOrderWhereInput = {
+      companyId,
+      isDeleted: false,
+      ...(status ? { status } : {}),
+    };
+    if (from && to) {
+      where.orderedAt = {
+        gte: new Date(from),
+        lte: new Date(to),
+      };
+    }
+
     return this.prisma.restaurantOrder.findMany({
-      where: {
-        companyId,
-        isDeleted: false,
-        ...(status ? { status } : {}),
-      },
+      where,
       include: {
         table: true,
         items: true,
@@ -293,17 +333,15 @@ export class RestaurantService {
       }
 
       if (status === 'PAID' || status === 'CANCELLED') {
-        const openingOrders = await tx.restaurantOrder.count({
+        const openOrdersOnTable = await tx.restaurantOrder.count({
           where: {
             companyId,
             tableId: order.tableId,
             isDeleted: false,
-            status: {
-              notIn: ['PAID', 'CANCELLED'],
-            },
+            status: { in: [...RESTAURANT_ORDER_OPEN_STATUSES] },
           },
         });
-        if (openingOrders === 0) {
+        if (openOrdersOnTable === 0) {
           await tx.restaurantTable.update({
             where: { id: order.tableId },
             data: { status: 'AVAILABLE' },

@@ -121,11 +121,15 @@ export class RestaurantController {
   listOrders(
     @Request() req: any,
     @Query('status') status?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
     @Query('companyId') companyId?: string,
   ) {
     return this.restaurantService.listOrders(
       this.resolveCompanyId(req, companyId ? Number(companyId) : undefined),
       status,
+      from,
+      to,
     );
   }
 
