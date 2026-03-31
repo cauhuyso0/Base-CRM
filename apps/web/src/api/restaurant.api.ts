@@ -55,6 +55,10 @@ export type RestaurantTable = {
   status: 'AVAILABLE' | 'OCCUPIED' | 'RESERVED' | string;
   isActive?: boolean;
   qrToken?: string;
+  posX?: number | null;
+  posY?: number | null;
+  width?: number | null;
+  height?: number | null;
 };
 
 export type RestaurantOrder = {
@@ -172,8 +176,19 @@ export const restaurantApi = {
     name: string;
     area?: string;
     seats?: number;
+    posX?: number;
+    posY?: number;
+    width?: number;
+    height?: number;
   }): Promise<RestaurantTable> => {
     const response = await apiClient.post('/restaurant/tables', payload);
+    return response.data;
+  },
+  updateTable: async (
+    id: number,
+    payload: Partial<Pick<RestaurantTable, 'code' | 'name' | 'area' | 'seats' | 'posX' | 'posY' | 'width' | 'height'>>,
+  ): Promise<RestaurantTable> => {
+    const response = await apiClient.patch(`/restaurant/tables/${id}`, payload);
     return response.data;
   },
   updateOrderStatus: async (

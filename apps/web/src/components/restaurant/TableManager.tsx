@@ -57,7 +57,14 @@ function TableManager({ refreshSignal = 0 }: TableManagerProps) {
     name: '',
     area: '',
     seats: 4,
+    posX: 10,
+    posY: 10,
+    width: 80,
+    height: 60,
   });
+  const [draggingId, setDraggingId] = useState<number | null>(null);
+  const [dragOffset, setDragOffset] = useState<{ x: number; y: number } | null>(null);
+  const [dragMoved, setDragMoved] = useState(false);
 
   const loadTables = async () => {
     try {
@@ -92,8 +99,12 @@ function TableManager({ refreshSignal = 0 }: TableManagerProps) {
         name: form.name.trim(),
         area: form.area.trim() || undefined,
         seats: Number(form.seats || 0) || 4,
+        posX: Number.isFinite(form.posX) ? form.posX : 10,
+        posY: Number.isFinite(form.posY) ? form.posY : 10,
+        width: Number.isFinite(form.width) ? form.width : 80,
+        height: Number.isFinite(form.height) ? form.height : 60,
       });
-      setForm({ code: '', name: '', area: '', seats: 4 });
+      setForm({ code: '', name: '', area: '', seats: 4, posX: 10, posY: 10, width: 80, height: 60 });
       setShowCreate(false);
       await loadTables();
     } catch (err: any) {
@@ -154,6 +165,46 @@ function TableManager({ refreshSignal = 0 }: TableManagerProps) {
     }
   };
 
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!draggingId || !dragOffset) return;
+    if (!dragMoved) {
+      setDragMoved(true);
+    }
+    const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
+    const x = e.clientX - rect.left - dragOffset.x;
+    const y = e.clientY - rect.top - dragOffset.y;
+    setTables((prev) =>
+      prev.map((t) =>
+        t.id === draggingId
+          ? {
+              ...t,
+              posX: Math.max(0, Math.min(rect.width - (t.width ?? 80), x)),
+              posY: Math.max(0, Math.min(rect.height - (t.height ?? 60), y)),
+            }
+          : t,
+      ),
+    );
+  };
+
+  const handleMouseUp = async () => {
+    if (!draggingId) return;
+    const table = tables.find((t) => t.id === draggingId);
+    setDraggingId(null);
+    setDragOffset(null);
+    if (!table) return;
+    try {
+      await restaurantApi.updateTable(table.id, {
+        posX: table.posX ?? 10,
+        posY: table.posY ?? 10,
+        width: table.width ?? 80,
+        height: table.height ?? 60,
+      });
+    } catch {
+      // không chặn UI, chỉ không lưu được toạ độ
+    }
+    setDragMoved(false);
+  };
+
   return (
     <div className="bg-white dark:bg-gray-900 rounded-lg shadow p-4 space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -188,7 +239,7 @@ function TableManager({ refreshSignal = 0 }: TableManagerProps) {
       )}
 
       {showCreate && (
-        <form onSubmit={handleCreate} className="grid grid-cols-1 md:grid-cols-4 gap-3">
+        <form onSubmit={handleCreate} className="grid grid-cols-1 md:grid-cols-6 gap-3">
           <input
             required
             value={form.code}
@@ -209,12 +260,45 @@ function TableManager({ refreshSignal = 0 }: TableManagerProps) {
             placeholder="Khu vực"
             className="border rounded-md px-3 py-2 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100"
           />
+          <input
+            type="number"
+            min={1}
+            value={form.seats}
+            onChange={(e) => setForm((prev) => ({ ...prev, seats: Number(e.target.value) }))}
+            placeholder="Số chỗ"
+            className="border rounded-md px-3 py-2 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100"
+          />
           <div className="flex gap-2">
             <input
               type="number"
-              min={1}
-              value={form.seats}
-              onChange={(e) => setForm((prev) => ({ ...prev, seats: Number(e.target.value) }))}
+              value={form.posX}
+              onChange={(e) => setForm((prev) => ({ ...prev, posX: Number(e.target.value) }))}
+              placeholder="X"
+              className="w-full border rounded-md px-3 py-2 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100"
+            />
+            <input
+              type="number"
+              value={form.posY}
+              onChange={(e) => setForm((prev) => ({ ...prev, posY: Number(e.target.value) }))}
+              placeholder="Y"
+              className="w-full border rounded-md px-3 py-2 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100"
+            />
+          </div>
+          <div className="flex gap-2">
+            <input
+              type="number"
+              min={10}
+              value={form.width}
+              onChange={(e) => setForm((prev) => ({ ...prev, width: Number(e.target.value) }))}
+              placeholder="Rộng"
+              className="w-full border rounded-md px-3 py-2 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100"
+            />
+            <input
+              type="number"
+              min={10}
+              value={form.height}
+              onChange={(e) => setForm((prev) => ({ ...prev, height: Number(e.target.value) }))}
+              placeholder="Cao"
               className="w-full border rounded-md px-3 py-2 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100"
             />
             <button
@@ -233,26 +317,62 @@ function TableManager({ refreshSignal = 0 }: TableManagerProps) {
       ) : tables.length === 0 ? (
         <div className="text-sm text-gray-500 dark:text-gray-400">Chưa có bàn nào</div>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-6 gap-3">
+        <div
+          className="relative w-full h-[520px] border rounded-md bg-gray-50 dark:bg-gray-800 overflow-hidden"
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseUp}
+        >
           {tables.map((table) => {
             const isOccupied = table.status === 'OCCUPIED';
+            const left = (table.posX ?? 10) as number;
+            const top = (table.posY ?? 10) as number;
+            const width = (table.width ?? 80) as number;
+            const height = (table.height ?? 60) as number;
             return (
               <button
                 type="button"
                 key={table.id}
-                onClick={() => void openTableDetail(table)}
-                className={`rounded-md border p-3 ${
+                onMouseDown={(e) => {
+                  const rect = (e.currentTarget as HTMLButtonElement).getBoundingClientRect();
+                  setDraggingId(table.id);
+                  setDragOffset({
+                    x: e.clientX - rect.left,
+                    y: e.clientY - rect.top,
+                  });
+                  setDragMoved(false);
+                }}
+                onClick={() => {
+                  if (draggingId || dragMoved) {
+                    return;
+                  }
+                  if (!draggingId && !dragMoved) {
+                    void openTableDetail(table);
+                  }
+                }}
+                style={{
+                  position: 'absolute',
+                  left,
+                  top,
+                  width,
+                  height,
+                }}
+                className={`flex flex-col justify-center items-center rounded-md border text-[11px] px-1 py-1 overflow-hidden ${
                   isOccupied
                     ? 'border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-900/20'
                     : 'border-emerald-300 bg-emerald-50 dark:border-emerald-700 dark:bg-emerald-900/20'
-                } text-left hover:shadow`}
+                } hover:shadow`}
               >
-                <div className="text-xs text-gray-500 dark:text-gray-400">{table.code}</div>
-                <div className="font-semibold text-gray-900 dark:text-gray-100">{table.name}</div>
-                <div className="text-xs text-gray-600 dark:text-gray-300">
+                <div className="text-[10px] text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                  {table.code}
+                </div>
+                <div className="font-semibold text-gray-900 dark:text-gray-100 truncate max-w-[80px]">
+                  {table.name}
+                </div>
+                <div className="text-[10px] text-gray-600 dark:text-gray-300 whitespace-nowrap">
                   {table.area || '-'} - {table.seats || 0} chỗ
                 </div>
-                <div className="mt-1 text-xs font-medium">
+                <div className="mt-0.5 text-[10px] font-medium whitespace-nowrap">
                   {isOccupied ? 'Đang phục vụ' : table.status || 'AVAILABLE'}
                 </div>
               </button>

@@ -1,4 +1,4 @@
-import { Controller, Get, Request } from '@nestjs/common';
+import { Controller, Get, Query, Request } from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
@@ -39,9 +39,13 @@ export class AppController {
     description: 'Statistics retrieved successfully',
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async getDashboardStats(@Request() req) {
+  async getDashboardStats(
+    @Request() req,
+    @Query('period') period?: '7d' | '30d' | '90d' | '12m' | 'all',
+  ) {
     return await this.appService.getDashboardStats(
       req.user.companyId as number,
+      period,
     );
   }
 }

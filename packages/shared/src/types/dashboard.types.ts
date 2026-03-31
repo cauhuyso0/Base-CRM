@@ -3,6 +3,7 @@
  */
 
 export interface DashboardStats {
+  period: DashboardPeriod;
   operations: {
     totalTables: number;
     totalMenuItems: number;
@@ -22,5 +23,10 @@ export interface DashboardStats {
     input: number;
     payable: number;
   };
+  revenueSeries: {
+    label: string;
+    value: number;
+  }[];
 }
 
+export type DashboardPeriod = '7d' | '30d' | '90d' | '12m' | 'all';

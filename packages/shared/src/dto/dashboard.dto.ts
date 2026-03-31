@@ -1,12 +1,14 @@
 /**
  * Dashboard DTOs
  */
+import { DashboardPeriod } from '../types/dashboard.types';
 
 export interface DashboardStatsRequest {
-  // No request params needed, uses companyId from JWT
+  period?: DashboardPeriod;
 }
 
 export interface DashboardStatsResponse {
+  period: DashboardPeriod;
   operations: {
     totalTables: number;
     totalMenuItems: number;
@@ -26,5 +28,8 @@ export interface DashboardStatsResponse {
     input: number;
     payable: number;
   };
+  revenueSeries: {
+    label: string;
+    value: number;
+  }[];
 }
-

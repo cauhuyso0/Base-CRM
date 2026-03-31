@@ -1,25 +1,31 @@
+import { DashboardPeriod } from '../types/dashboard.types';
+
 export interface DashboardStatsRequest {
+    period?: DashboardPeriod;
 }
 export interface DashboardStatsResponse {
-    customers: {
-        total: number;
-        active: number;
+    period: DashboardPeriod;
+    operations: {
+        totalTables: number;
+        totalMenuItems: number;
+        totalOrders: number;
+        newOrders: number;
+        preparingOrders: number;
+        servedOrders: number;
+        paidOrders: number;
     };
-    opportunities: {
-        total: number;
-        active: number;
-        won: number;
+    finance: {
+        income: number;
+        expense: number;
+        profit: number;
     };
-    salesOrders: {
-        total: number;
-        revenue: number;
+    tax: {
+        output: number;
+        input: number;
+        payable: number;
     };
-    cases: {
-        total: number;
-        open: number;
-    };
-    tickets: {
-        total: number;
-        open: number;
+    revenueSeries: {
+        label: string;
+        value: number;
     };
 }

@@ -8,6 +8,7 @@ import {
   CreateQrOrderDto,
   CreateRestaurantTableDto,
   CreateTaxRuleDto,
+  UpdateRestaurantTableDto,
   UpdateMenuItemDto,
   UpsertBusinessSettingDto,
 } from './dto/restaurant.dto';
@@ -105,6 +106,33 @@ export class RestaurantService {
         name: dto.name,
         area: dto.area,
         seats: dto.seats ?? 4,
+        posX: dto.posX,
+        posY: dto.posY,
+        width: dto.width,
+        height: dto.height,
+      },
+    });
+  }
+
+  async updateTable(companyId: number, id: number, dto: UpdateRestaurantTableDto) {
+    const existing = await this.prisma.restaurantTable.findFirst({
+      where: { id, companyId, isDeleted: false },
+    });
+    if (!existing) {
+      throw new NotFoundException('Table not found');
+    }
+
+    return this.prisma.restaurantTable.update({
+      where: { id },
+      data: {
+        code: dto.code,
+        name: dto.name,
+        area: dto.area,
+        seats: dto.seats,
+        posX: dto.posX,
+        posY: dto.posY,
+        width: dto.width,
+        height: dto.height,
       },
     });
   }

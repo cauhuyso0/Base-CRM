@@ -19,6 +19,7 @@ import {
   CreateQrOrderDto,
   CreateRestaurantTableDto,
   CreateTaxRuleDto,
+  UpdateRestaurantTableDto,
   UpdateMenuItemDto,
   UpsertBusinessSettingDto,
   UpdateOrderStatusDto,
@@ -53,6 +54,20 @@ export class RestaurantController {
   ) {
     return this.restaurantService.createTable(
       this.resolveCompanyId(req, companyId ? Number(companyId) : undefined),
+      dto,
+    );
+  }
+
+  @Patch('tables/:id')
+  updateTable(
+    @Request() req: any,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateRestaurantTableDto,
+    @Query('companyId') companyId?: string,
+  ) {
+    return this.restaurantService.updateTable(
+      this.resolveCompanyId(req, companyId ? Number(companyId) : undefined),
+      id,
       dto,
     );
   }

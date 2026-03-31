@@ -32,6 +32,64 @@ export class CreateRestaurantTableDto {
   @IsInt()
   @Min(1)
   seats?: number;
+
+  @IsOptional()
+  @IsInt()
+  posX?: number;
+
+  @IsOptional()
+  @IsInt()
+  posY?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(10)
+  width?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(10)
+  height?: number;
+}
+
+export class UpdateRestaurantTableDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  code?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  name?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  area?: string;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  seats?: number;
+
+  @IsOptional()
+  @IsInt()
+  posX?: number;
+
+  @IsOptional()
+  @IsInt()
+  posY?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(10)
+  width?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(10)
+  height?: number;
 }
 
 export class CreateMenuItemDto {
